@@ -1,0 +1,24 @@
+# Data from the original input files to the FORTRAN code
+# provided online by Fletcher and Pugmire at
+# http://www.et.byu.edu/~tom/cpd/cpd92/cpdfiles.html
+  0.00,   298
+  2.13,   329
+  3.42,   374
+  5.09,   440
+  6.48,   522
+  8.32,   626
+  9.26,   677
+ 10.12,   723
+ 11.42,   792
+ 12.89,   862
+ 14.11,   912
+ 16.16,   966
+ 18.40,  1002
+ 20.94,  1032
+ 21.95,  1042
+ 23.11,  1051
+ 27.83,  1070
+ 31.14,  1073
+ 37.60,  1073
+ 46.92,  1073
+ 48.77,  1073

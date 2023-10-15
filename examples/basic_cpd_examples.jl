@@ -110,7 +110,6 @@ plot(orig_result2[:,1], orig_result2[:,5], label="ftar", reuse=false)
 plot!(orig_result2[:,1], orig_result2[:,3], label="fcross", reuse=true)
 plot!(orig_result2[:,1], orig_result2[:,7], label="fchar ", reuse=true)
 plot!(orig_result2[:,1], orig_result2[:,6], label="fgas", reuse=true)
-#plot!(orig_result2[:,1], orig_result2[:,8], label="ftot", reuse=true)
 plot!(orig_result2[:,1], orig_result2[:,9], label="fmet", reuse=true)
 
 # ============================================================================

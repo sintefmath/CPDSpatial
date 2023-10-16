@@ -136,6 +136,9 @@ Plots.pyplot() # use the `pyplot` backend for plotting
 cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
 
+# utility function to wait for a keypress
+wait_for_key(info) = print(stdout, info); read(stdin, 1); nothing;
+
 # Post-processing of results
 
 # compute tar and light gas yield over time, as well as the quantity of
@@ -154,6 +157,8 @@ plot(cumtime, lgasfrac, reuse=false, label="light gas")
 plot!(cumtime, tarfrac, label = "volatile tar")
 plot!(cumtime , mplastfrac, label = "metaplast")
 plot!(cumtime, charfrac, label="char")
+
+wait_for_key("Press any key to continue");
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
 pmat = hcat([x[:Pressure] for x in states]...);
@@ -180,4 +185,3 @@ display(sfplot2)
 using MAT
 matwrite("result.mat", Dict("P"=>pmat, "T"=>tmat, "X"=>lgmat, "Xd"=>lgdens,
                             "attached" => attached, "Ld" => liqdens, "cumtime"=>cumtime))
-

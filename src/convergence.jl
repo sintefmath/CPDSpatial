@@ -1,7 +1,8 @@
 # Override convergence criterion for mass conservation law in JutulDarcy, since
 # we need to account for the possibility that a substance may have zero density
 function Jutul.convergence_criterion(model::JutulCPDModel,
-                                     storage, eq::ConservationLaw{:ξ}, eq_s, r; dt = 1)
+                                     storage, eq::ConservationLaw{:ξ}, eq_s, r;
+                                     dt = 1, kwarg...)
     M = global_map(model.domain)
     v = x -> as_value(Jutul.active_view(x, M, for_variables = false))
     Φ = v(storage.state.FluidVolume)
@@ -25,7 +26,8 @@ end
 # Override convergence criterion for energy conservation law in JutulDarcy, since most of the
 # energy is found in the solid, not the vapor phase
 function Jutul.convergence_criterion(model::JutulCPDModel, storage,
-                                     eq::ConservationLaw{:TotalThermalEnergy}, eq_s, r; dt = 1)
+                                     eq::ConservationLaw{:TotalThermalEnergy}, eq_s, r;
+                                     dt = 1, kwarg...)
 
     # ensure no division by zero, and prevent convergence issues if there are
     # many orders of difference between the thermal energy in different cells
@@ -40,7 +42,7 @@ function Jutul.convergence_criterion(model::JutulCPDModel, storage,
     cnv_error = dt * [maximum(abs.(r[:] ./ max.(storage.state.TotalThermalEnergy, small)))]
 
     # compute "mb"-like error
-    mb_error = dt * [sum(r[:]) / sum(storage.state.TotalThermalEnergy)]
+    mb_error = dt * [abs(sum(r[:])) / sum(storage.state.TotalThermalEnergy)]
 
     names = "Energy"
     R = (CNV = (errors = cnv_error, names = names),
@@ -49,7 +51,8 @@ function Jutul.convergence_criterion(model::JutulCPDModel, storage,
 end
 
 function Jutul.convergence_criterion(model::JutulCPDModel,
-                                     storage, eq::CPDPressureEquation, eq_s, r; dt = 1)
+                                     storage, eq::CPDPressureEquation, eq_s, r;
+                                     dt = 1, kwarg...)
 
     mean_pressure = sum(storage.state.Pressure) / length(r)
     min_fac = 1e-2 # if the pressure in a cell is two orders of magnitude less

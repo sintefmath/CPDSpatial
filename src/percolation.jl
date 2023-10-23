@@ -201,6 +201,7 @@ end
     binned_molecular_weights(r, p, σ, c0, δ, £)
     
 Compute the molecular weight of tar 1-mers, 2-mers up to n-mers.
+Unit: same unit as used for `ma` in the input.
 
 # Arguments
 - `ma::Float64`: Mean weight of a single site.

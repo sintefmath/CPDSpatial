@@ -21,6 +21,11 @@ use_radial_grid = true
 # rising quickly from 300 K to a maximum of 1500 K.
 P0 = 101325.0 # one atmosphere pressure, in Pascal
 Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/1.5e-2)
+#Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/15) # uncomment for a slow rise
+
+# simulated duration
+duration = 30.0 # in seconds
+#duration = 45.0 # in seconds  # uncomment for a slow temperature rise
 
 # ============================================================================
 #                  SETUP THE DOMAIN AND THE SIMULATION MODEL
@@ -29,7 +34,7 @@ Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/1.5e-2)
 # setup the grid, `G` and the boundary conditions, `bc`.   (The default parameters
 # are defined in the file `defaults.jl`).
 if use_radial_grid
-    G, bc = radial_test_domain("data/grids/G_1cm_200.mat", P0, Tfun,
+    G, bc = radial_test_domain("data/grids/G_1cm_400.mat", P0, Tfun,
                                prm_defaults[:Permeability], 
                                prm_defaults[:Porosity],
                                prm_defaults[:CharThermalConductivity], 
@@ -64,8 +69,11 @@ prm = setup_parameters(model, prm_defaults)
 # pore space; (2) compute the char density (which differs from bulk density
 # as the latter also includes the non-evaporated tar).
 state0, char_density = CPDSpatial.setup_state(model, prm[:p₀][1], prm[:c₀][1], prm[:ma][1],
-                                               prm[:mb][1], prm[:σ][1], prm[:BulkDensity],
-                                               P0, Tfun(0));
+                                              prm[:mb][1], prm[:σ][1], prm[:BulkDensity],
+                                              P0, Tfun(0),
+                                              α=prm_defaults[:flash_αβγ][1],
+                                              β=prm_defaults[:flash_αβγ][2],
+                                              γ=prm_defaults[:flash_αβγ][3]);
 
 # We add the char density to the parameter store
 prm[:CharDensity] = char_density;
@@ -74,7 +82,6 @@ prm[:CharDensity] = char_density;
 # timestep size with finer timesteps towards the start of the simulation, to better
 # capture the effect of rapid heating at the interface when the tar particle is
 # exposed to the external heat.
-duration = 0.03 * 1000; # Simulate 30 seconds
 num_steps = 1000;       # Use 1000 timesteps (a fine time resolution is required
                         # to properly capture the CPD process and ensure global
                         # convergence.  Note that if timesteps are too long, the
@@ -157,6 +164,9 @@ plot(cumtime, lgasfrac, reuse=false, label="light gas")
 plot!(cumtime, tarfrac, label = "volatile tar")
 plot!(cumtime , mplastfrac, label = "metaplast")
 plot!(cumtime, charfrac, label="char")
+plot!(cumtime,
+      cumsum([sum(x) for x in reattached] ./ init_mass),
+      label="reattached metaplast")
 
 wait_for_key("Press any key to continue");
 

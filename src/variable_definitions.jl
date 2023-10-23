@@ -142,9 +142,12 @@ function Jutul.default_values(model, var::FixedReactionRate{:ρ_rate})
     return 0.9
 end
 
-# specify default parameters for flash calculation
+# specify default parameters for flash calculation (α, β, γ)
+# The defaults are here given with with respect to SI units (Pascals, kg/mol),
+# in contrast to the values used in related literature which are in relation to
+# atm and g/mol ([87058.0, 299.0, 0.5903])
 Jutul.default_values(model, var::CPDFlashParams) =
-    repeat([87058.0, 299.0, 0.5903], 1, number_of_entities(model, var)) # default flash parameters (α, β, γ)
+    repeat([8.82115e9, 299 * 10^(3*0.5903), 0.5903] , 1, number_of_entities(model, var)) 
 
 # Secondary variables
 struct NonvaporInternalEnergy <: Jutul.ScalarVariable end # char and metaplast
@@ -272,7 +275,7 @@ end
 
 
 @jutul_secondary function update_variable!(U, var::DetachedMass{:Vapor}, model, ma, mb, £δc, σ, 
-                                           Temperature, Pressure, ξ, FluidVolume, ix)
+                                           Temperature, Pressure, ξ, FluidVolume, flash_αβγ, ix)
     
     for i in ix
 
@@ -283,10 +286,14 @@ end
         δ = £δc[2, i]
         c = £δc[3, i]
 
+        α = flash_αβγ[1, i]
+        β = flash_αβγ[2, i]
+        γ = flash_αβγ[3, i]
+        
         molweights =
             vcat(binned_molecular_weights(ma[i], r, £ + c, σ[i], δ, £, model.system.num_tar_bins),
                  light_gas_weight)
-        mplast, vapors = flash(ξ[:, i], molweights, Temperature[i], Pressure[i])
+        mplast, vapors = flash(ξ[:, i], molweights, Temperature[i], Pressure[i], α=α, β=β, γ=γ)
 
         U[:, i] = vapors
     end

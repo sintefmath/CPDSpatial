@@ -32,7 +32,10 @@ Returns:
    bulk density, but does not include the contribution of initial tar.
 """
 function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
-                     ma::Real, mb::Real, σ::Real, bulk_density, P0::Real, T0::Real)
+                     ma::Real, mb::Real, σ::Real, bulk_density, P0::Real, T0::Real;
+                     α = 8.82115e9,
+                     β = 299 * 10^(3*0.5903), # original β = 299 was for g/mol, not kg/mol
+                     γ = 0.5903)
 
     @assert(0.0 <= c0 <= p0 <= 1.0)
     £ = p0 - c0
@@ -60,7 +63,7 @@ function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
     # to reproduce the pressure
     
     vapor_moles = (gmass, cell) -> flash(vcat(ftar * cell_masses[cell], gmass),
-                                         ξ_comp_weights, T0, P0)[5]
+                                         ξ_comp_weights, T0, P0, α=α, β=β, γ=γ)[5]
 
     gmassvec = [find_zero(gmass -> vapor_moles(gmass, c) * R * T0 / porevolume[c] - P0,
                           [0.0, 10 * n_guess[c] * light_gas_weight])
@@ -68,7 +71,7 @@ function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
 
     ξ0 = vcat([ftar...] * cell_masses', gmassvec')
 
-    ξ0vapor = [flash(ξ0[:, c], ξ_comp_weights, T0, P0)[2] for c in 1:length(cell_masses)]
+    ξ0vapor = [flash(ξ0[:, c], ξ_comp_weights, T0, P0, α=α, β=β, γ=γ)[2] for c in 1:length(cell_masses)]
     ξ0vapor = hcat(ξ0vapor...) # convert into matrix
 
     state = Jutul.setup_state(model, Dict(:Pressure => P0, 

@@ -11,12 +11,18 @@ prm_defaults = Dict([:c₀                          => 6.78e-2,                 
                      :g_rate                      => [3.0e15, 60000.0, 8100.0], # A, E and variance
                      :cross_rate                  => [3.0e15, 65000.0, 0.0],    # A, E and variance
                      :ρ_rate                      => 0.9,
-                     :flash_αβγ                   => [87058.0, 299.0, 0.5903],  # flash parameters (α, β, γ)
+                     :flash_αβγ                   => [8.82115e9, 299 * 10^(3*0.5903), 0.5903], # flash parameters (α, β, γ)
                      :Permeability                => 9.87e-13 * 1e-2, # 10 mD (m2)
-                     :Porosity                    => 0.1,      # 10% porosity
-                     :VaporHeatCapacity           => 1500.0, #1500.0,  # J / (kg K)
+                     :Porosity                    => 0.1,             # 10% porosity
+                     :VaporHeatCapacity           => 1500.0,          #1500.0, # J / (kg K)
                      :PhaseViscosities            => 1.5e-5,
-                     :VaporThermalConductivity    => 1.0e-1, # 
-                     :CharThermalConductivity     => 0.2,#0.5e-1,  # also covers metaplast
-                     :BulkDensity                 => 350.0,   # kg / m3 (includes initial char, tar and gas)
-                     :CharHeatCapacity            => 2000.0]) # J / (kg K) , also covers metaplast
+                     :VaporThermalConductivity    => 1.0e-1,          # 
+                     :CharThermalConductivity     => 0.2,             #0.5e-1, # also covers metaplast
+                     :BulkDensity                 => 350.0,           # kg / m3 (includes initial char, tar and gas)
+                     :CharHeatCapacity            => 2000.0])         # J / (kg K) , also covers metaplast
+
+
+# Note that in the literature, the flash parameters are typically given with
+# respect to atmospheres for pressure and g/mol for molecular weights, whereas
+# the defaults we use above are for Pa and kg/mol.
+# In the original units, the vlaue for flash_αβγ above would be [87058.0, 299.0, 0.5903].

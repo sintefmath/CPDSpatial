@@ -33,7 +33,7 @@ function plot_result(res)
 
     # Create the first subplot with (£vec, δvec, cvec)
     subplot1 = plot(res.time, res.£vec, label="£vec", reuse=false)
-    plot!(res.time, res.δvec, label="δvec")
+    plot!(res.time, res.δvec/2, label="δvec")
     plot!(res.time, res.cvec, label="cvec")
     plot!(res.time, res.g1/2, label="g1")
     plot!(res.time, res.g2/2, label="g2")
@@ -91,8 +91,11 @@ plot_result(res_cpdheat)
 # http://www.et.byu.edu/~tom/cpd/cpd92/cpdfiles.html
 # Output is compared with the 'cpdb.out' file available at that web page
 
-mpar = MaterialParams(4.6, 0.61, 0.0, (29.0-7.0)/267.0, 267.0)
+# divide `ma` by 1000 to get it expressed in kg/mol rather than g/mol
+mpar = MaterialParams(4.6, 0.61, 0.0, (29.0-7.0)/267.0, 267.0/1000)
+
 duration = 45e-3 # 45 milliseconds
+
 res1_fortran = cpd(AEσb, AEσg, AEσρ, mpar, duration, t -> Tfun(t), basic_model=false);
 
 plot_result(res1_fortran)

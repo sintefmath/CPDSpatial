@@ -39,7 +39,7 @@ struct MaterialParams
     p₀::Float64  # fraction of intact bridges (incl. charred bridges)
     c₀::Float64  # fraction of charred bridges (<= p₀)
     r::Float64   # ratio of bridge mass `mb` to site mass `ma`
-    ma::Float64  # average site mass (NB: kg/mol, not g/mol)
+    ma::Float64  # average site mass (NB: kg/mol, not g/mol!)
 end
 
 # The following constructor is useful when running the basic model, where
@@ -61,19 +61,19 @@ This function performs a cpd simulation. It takes in the following parameters:
 - Tfun: A function representing the temperature as a function of time.
 - basic_model: If true, limit computations to basic model from initial (1988) paper
 """
-function cpd(AEσb::ReactionRateParams,  # bridge breaking reaction: £ →£⋆
-             AEσg::ReactionRateParams,  # formation of light gas: δ → g₁
-             AEσρ::ReactionRateParams,  # ratio of side chain formation to
-                                        # char bridge formation: kδ/kc
-             mpar::MaterialParams,      # coal/biomass-specific params
-             duration::Float64,         # in seconds
-             Tfun::Function;            # T(t): temperature as function of time
-             basic_model = false,       # if true, ignore metaplast model
+function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£⋆
+             AEσg::ReactionRateParams,     # formation of light gas: δ → g₁
+             AEσρ::ReactionRateParams,     # ratio of side chain formation to
+                                           # char bridge formation: kδ/kc
+             mpar::MaterialParams,         # coal/biomass-specific params
+             duration::Float64,            # in seconds
+             Tfun::Function;               # T(t): temperature as function of time
+             basic_model = false,          # if true, ignore metaplast model
              Pfun::Function = t -> 101325, # P(t): pressure as function of time, in Pascal,
-                                        # defaults to constant 1 atm = 101325Pa.  
-                                        # Pressure is not used in the basic model
-             num_tar_bins = 20,         # number of tar bins (if basic_model = false)
-             max_tstep = Inf            # 
+                                           # defaults to constant 1 atm = 101325Pa.  
+                                           # Pressure is not used in the basic model.
+             num_tar_bins = 20,            # number of tar bins (if basic_model = false)
+             max_tstep = Inf               # 
              )
     # Arrhenius rate law
     R = 1.9872036 # universal gas constant in cal/mol/K
@@ -193,7 +193,6 @@ function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, 
         # compute temperature and pressure, current timestep
         T[i] = Tfun(time[i])
         P = Pfun(time[i])
-        
         # Compute light gas mass fraction, adjusted for evacuated metaplast
         # (which does not contribute to light gas generation).
         # @@ Note: this is in line with the treatment of fgas in the original code, but
@@ -208,7 +207,7 @@ function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, 
         # compute binned tar mass fraction with no adjustments 
         bins = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins)
 
-        # compute corresponding molecular weights
+        # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
         molweights = binned_molecular_weights(ma, r, pvec[i], σ, δvec[i], £vec[i], num_bins)
 
         # compute cross-linking

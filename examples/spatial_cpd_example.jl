@@ -93,8 +93,8 @@ timesteps = range(0, stop=1.0, length=num_steps+1).^exponent .* duration;
 timesteps = diff(timesteps);
 
 # We set the external 'forcing', which consists of the boundary conditions, and
-# optionally an imposed global temperature profile (if
-# `imposed_global_temperature` is set to `true`).
+# optionally an imposed global temperature profile (if `imposed_global_temperature`
+# is set to `true`).
 forces = setup_forces(model,
                       sources = imposed_global_temperature ? TemperatureProfile(Tfun) : nothing,
                       bc = bc);

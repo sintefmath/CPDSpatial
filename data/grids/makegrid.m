@@ -29,8 +29,7 @@ function G = makegrid(R, ncells, varargin)
         nodes = sort(nodes);
         
     end
-    nodes
-            
+    
     x = cos(angle) * nodes;
 
     v = nodes * sin(angle);

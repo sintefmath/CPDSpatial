@@ -27,10 +27,13 @@ function find_zero_wrapper(fun,
     # the default is just a wrapper around Roots.find_zero
     paramval = get_value(param)
 
-    result = find_zero(x->fun(x, paramval...), interval)
-
-    return attach_gradient(result, param, fun)
-
+    try
+        result = find_zero(x->fun(x, paramval...), interval)
+        return attach_gradient(result, param, fun)
+    catch ex
+        println("error occured: ", ex.msg) 
+        rethrow() 
+    end
 end
 
 function attach_gradient(result, param, fun)

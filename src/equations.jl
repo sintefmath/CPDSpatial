@@ -275,8 +275,9 @@ function Jutul.update_equation!(eq_s::ConservationLawTPFAStorage,
 
     # Next, update accumulation, "intrinsic" sources and fluxes
     Jutul.@tic "accumulation" update_accumulation!(eq_s, law, storage, model, dt)
+    
+    Jutul.@tic "fluxes" update_half_face_flux!(eq_s, law, storage, model, dt)
 
-    Jutul.@tic "fluxes" update_half_face_flux!(eq_s, law, storage, model, dt) 
 end
 
 function Jutul.update_equation!(eq_s::ConservationLawTPFAStorage,
@@ -313,6 +314,7 @@ end
 
 function cpd_increment(cell, state, state0, model, dt)
 
+#    @show dt, value(state[:Temperature]), value(state0[:Temperature])
     prev_ftar = state0.ftar_and_gas[1:end-1, cell]
     cur_ftar = state.ftar_and_gas[1:end-1, cell]
 
@@ -339,20 +341,23 @@ function cpd_increment(cell, state, state0, model, dt)
 
     # ξ_increment has been adjusted due to truncation.  We want to ensure that total production
     # of volatiles still equals the reduction in char mass, so we do a rescaling here
-    cur_char_mass = state.RemainingCharVolume[cell] * state.BulkDensity[cell]
-    last_char_mass = state0.RemainingCharVolume[cell] * state0.BulkDensity[cell]
+    cur_char_mass = state.RemainingCharVolume[cell] * state.CharDensity[cell]
+    last_char_mass = state0.RemainingCharVolume[cell] * state0.CharDensity[cell]
     total_detached_mass = last_char_mass - cur_char_mass
 
     if sum(ξ_increment) > 0
         ξ_increment *= total_detached_mass / sum(ξ_increment)
     else
-        ξ_untruncated = init_cell_mass * vcat(cur_ftar .- prev_ftar, new_lightgas)
-        @assert total_detached_mass <= 0.0
+        if total_detached_mass > 0 
+            @show value(last_char_mass)
+            @show value(cur_char_mass)
+            @warn "No mass produced, but there is detached mass.  Roundoff error?"
+        end
     end
 
     # Reattached mass is considered inert and will not further participate in the CPD calculations
     reattached = min.(state.MetaplastCrossLinkRate[:, cell] * dt, state.ξmetaplast[:, cell])
-
+    @assert all(reattached .>= 0.0)
     ξ_increment -= reattached 
 
     return ξ_increment / dt 

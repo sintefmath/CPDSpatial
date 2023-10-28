@@ -34,17 +34,18 @@ duration = 30.0 # in seconds
 # setup the grid, `G` and the boundary conditions, `bc`.   (The default parameters
 # are defined in the file `defaults.jl`).
 if use_radial_grid
-    G, bc = radial_test_domain("data/grids/G_1cm_400.mat", P0, Tfun,
+    G, bc = radial_test_domain("data/grids/G_1cm_400.mat", P0, Tfun, 
                                prm_defaults[:Permeability], 
                                prm_defaults[:Porosity],
                                prm_defaults[:CharThermalConductivity], 
                                prm_defaults[:VaporThermalConductivity]);
 else
-    G, bc = simple_test_domain([200, 1, 1], [1.0, 0.01, 0.01], P0, Tfun,
+    G, bc = simple_test_domain((200, 1, 1), (0.01, 0.01, 0.01), P0, Tfun,
                                prm_defaults[:Permeability], 
                                prm_defaults[:Porosity],
                                prm_defaults[:CharThermalConductivity], 
-                               prm_defaults[:VaporThermalConductivity]);
+                               prm_defaults[:VaporThermalConductivity],
+                               isolated=[true, false, true, true, true, true]);
 end
 
 # Define the system of equations to be solved.  This is done by creating a
@@ -144,7 +145,9 @@ cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
 
 # utility function to wait for a keypress
-wait_for_key(info) = print(stdout, info); read(stdin, 1); nothing;
+function wait_for_key(info)
+    print(stdout, info); read(stdin, 1); nothing;
+end
 
 # Post-processing of results
 
@@ -168,7 +171,7 @@ plot!(cumtime,
       cumsum([sum(x) for x in reattached] ./ init_mass),
       label="reattached metaplast")
 
-wait_for_key("Press any key to continue");
+wait_for_key("Press any key to continue\n");
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
 pmat = hcat([x[:Pressure] for x in states]...);

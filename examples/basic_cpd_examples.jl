@@ -190,3 +190,22 @@ display(p)
 # Note: the curves display the same qualitative behavior and shape as in the
 # paper, but with somewhat different values (the scaling differs a bit).  Could
 # this be due to slightly different parameters?
+
+# ============================================================================
+# Test with material and reaction rate parameters for lignin
+
+AEσb_lignin = ReactionRateParams(7.0e16, 55400.0, 500.0); # should equal 0.9 at a temperature of 948 K
+AEσg_lignin = ReactionRateParams(2.3e19, 69000.0, 2600.0); # should equal 0.9 at a temperature of 948 K
+AEσρ_lignin = ReactionRateParams(1.7, 0.0, 0.0); # should equal 0.9 at a temperature of 948 K
+
+mpar_lignin = MaterialParams(3.5, 0.71, 78.0/208.0, 0.28); # (σp1, p₀, c₀, r)
+
+start_temp = 300.0;
+end_temp = 800.0;
+heating_duration = 1.0;
+total_duration = 3.0;
+rate = (end_temp - start_temp) / heating_duration;
+tfun_lignin = t -> start_temp + min(rate * t, end_temp);
+res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin, total_duration, t -> tfun_lignin(t));
+
+plot_result(res_lignin);

@@ -222,12 +222,14 @@ end
 
 @jutul_secondary function update_variable!(U, var::NonvaporInternalEnergy, model,
                                            CharDensity, ξmetaplast, Temperature,
-                                           RemainingCharVolume, CharHeatCapacity, ix)
+                                           RemainingCharVolume, CharHeatCapacity, BulkVolume, ix)
     for i in ix
         # internal energy of char
-        char_energy = CharHeatCapacity[i] * CharDensity[i] * Temperature[i]
+        remaining_char_mass = CharDensity[i] * RemainingCharVolume[i]
+        char_energy = CharHeatCapacity[i] * remaining_char_mass * Temperature[i] / BulkVolume[i]
         # internal energy of metaplast
-        mplast_density = ξmetaplast[i] / RemainingCharVolume[i]
+        mplast_density = sum(ξmetaplast[i]) / BulkVolume[i]
+        
         metaplast_energy = CharHeatCapacity[i] * mplast_density * Temperature[i]
         
         U[i] = char_energy + metaplast_energy
@@ -236,9 +238,9 @@ end
 
 @jutul_secondary function update_variable!(U, var::TotalThermalEnergy, model,
                                            NonvaporInternalEnergy, RemainingCharVolume,
-                                           VaporInternalEnergy, FluidVolume, ix)
+                                           VaporInternalEnergy, FluidVolume, BulkVolume, ix)
     for i in ix
-        U[i] = NonvaporInternalEnergy[i] * RemainingCharVolume[i] +
+        U[i] = NonvaporInternalEnergy[i] * BulkVolume[i] +
                VaporInternalEnergy[i] * FluidVolume[i]
     end
 end

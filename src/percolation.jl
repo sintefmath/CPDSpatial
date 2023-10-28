@@ -35,8 +35,8 @@ function p⃰(p::Real, σ)
     # if p is less than the threshold value, we already know the (trivial)
     # answer, and can avoid the call to the root-finding function
     (p <= 1/σ) ? p :
-    (p >= 1.0) ? 0.0 : # in reality, should never be larger than 1.0
-                 find_zero_wrapper(relation, p, (eps(), 1/σ - eps()))
+    (p >= 1.0 - eps()) ? 0.0 : # in reality, should never be larger than 1.0
+                         find_zero_wrapper(relation, p, (eps(), 1/σ - eps()))
 end
 
 function p⃰(p::Vector, σ)
@@ -160,7 +160,11 @@ function f_tar(r, p, σ, c0, δ, £; bins=0)
     if p == 1.0
         # all bridges are intact, no tar possible
         return (bins <= 1) ? 0.0 : zeros(bins)
+    elseif p == 0.0
+        # no intact bridges, everything is turned into monomers
+        return (bins <= 1) ? 1.0 : [1.0; zeros(bins-1)]
     end
+    
     
     # local helper functions
     Φ = function(p, r, £, σ, δ)

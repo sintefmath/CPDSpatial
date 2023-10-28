@@ -178,9 +178,9 @@ function radial_test_domain(gridname, P0, Tfun, perm, poro,
 
     tot_htrans = poro * bc_hv_trans + (1-poro) * bc_hs_trans
 
-    # there should be only one open face, the outermost one.  Since this is also
-    # the largest one, we can identify it that way.
-    outer_bface = argmax(G[:boundary_areas])
+    # there should be only one open face, the outermost one.  This is the one
+    # with the largest x-coordinate
+    outer_bface = argmax(G[:boundary_centroids][1,:]) 
 
     bc = [CPDFlowBoundaryCondition(G[:boundary_neighbors][outer_bface],
                                    P0, Tfun, bc_trans[outer_bface], tot_htrans[outer_bface])]

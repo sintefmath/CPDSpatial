@@ -46,7 +46,7 @@ function Jutul.select_secondary_variables!(S, sys::JutulCPDSystem, model::Simula
 
     S[:CurrentCellMass] = TotalCellMass() # total current mass in cell (solid, vapor and liquid)
     S[:RemainingCharVolume] = RemainingCharVolume() # volume of remaining char
-    S[:MetaplastCrossLinkRate] = DetachedMass{:MetaplastCrossLinkRate}() # cross-linked metaplast
+    S[:MetaplastCrossLinkRate] = DetachedMass{:MetaplastCrossLinkRate}() # cross-linked metaplast rate
 end
 
 function Jutul.select_parameters!(S, sys::JutulCPDSystem, model::SimulationModel)

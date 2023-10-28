@@ -61,7 +61,9 @@ function Jutul.convergence_criterion(model::JutulCPDModel,
     # As above for energy conservation law
     small = mean_pressure == 0.0 ? eps() : min_fac * mean_pressure 
 
+    krull = abs.(r[:] ./ max.(storage.state.Pressure, small));
     rel_error = [maximum(abs.(r[:] ./ max.(storage.state.Pressure, small)))]
+    
 
     names = "Pressure"
     R = (RelMax = (errors = rel_error, names = names), )

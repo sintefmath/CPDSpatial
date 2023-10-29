@@ -350,52 +350,150 @@ end
 
 function cpd_increment(cell, state, state0, model, dt)
 
+    # initial cell mass  @@ could be precomputed
+    init_cell_mass = state.BulkDensity[cell] * state.BulkVolume[cell] 
+
+    # Compute reference values for production of new tar
     prev_ftar = state0.ftar_and_gas[1:end-1, cell]
     cur_ftar = state.ftar_and_gas[1:end-1, cell]
 
-    # Compute production of new gas
+    # Compute reference values for production of new light gas
     prev_lightgas = state0.ftar_and_gas[end, cell]
     cur_lightgas = state.ftar_and_gas[end, cell]
 
+    char_depletion = sum(cur_ftar) - sum(prev_ftar) + sum(cur_lightgas) - sum(prev_lightgas)
+    char_depletion = max(char_depletion, 0.0) # Prevent roundoff errors
+                                              # from causing negative values
+    char_depletion *= init_cell_mass
+
+    # compute new light gas produced.  The reference values are based on the
+    # _original_ amount of mass, so we need to rescale the production based on the
+    # _remaining_ mass
     new_lightgas = cur_lightgas - prev_lightgas
+    new_lightgas = new_lightgas .* state.TotalCellMass[cell]
 
-    # The light gas produced above would result from the _original_ amount of mass.
-    # Modify the numbers based on _remaining_ mass consideration
-    init_cell_mass = state.BulkDensity[cell] * state.BulkVolume[cell] # initial cell mass    
-    massfrac = state.TotalCellMass[cell] / init_cell_mass 
-
-    new_lightgas = new_lightgas .* massfrac # only the remaining mass produces gas
-
-    # compute change in volatile tar masses, and append the light gas change
-    ξ_increment = init_cell_mass * vcat(cur_ftar .- prev_ftar, new_lightgas)
-    
-    ξ_increment = max.(ξ_increment, 0.0) # @@ in line with treatment in original
-                                         # CPD code (flash.m) Not sure if this
-                                         # is physically consistent, since it
-                                         # ignores actual decreases of bin contents
-
-    # ξ_increment has been adjusted due to truncation.  We want to ensure that total production
-    # of volatiles still equals the reduction in char mass, so we do a rescaling here
-    # cur_char_mass = state.TotalCellMass[cell] - sum(state.ξ[:, cell])
-    # last_char_mass = state0.TotalCellMass[cell] - sum(state0.ξ[:, cell])
-    # total_detached_mass = last_char_mass - cur_char_mass
-
-    # if sum(ξ_increment) > 0
-    #     ξ_increment *= total_detached_mass / sum(ξ_increment)
-    # else
-    #     if total_detached_mass > 0 
-    #         @show value(last_char_mass)
-    #         @show value(cur_char_mass)
-    #         @warn "No mass produced, but there is detached mass.  Roundoff error?"
-    #     end
-    # end
-
-    # Deducting reattached metaplast from increment (may lead to negative increment, this is OK)
-    reattached = min.(state.MetaplastCrossLinkRate[:, cell] * dt, state.ξmetaplast[:, cell])
+    # Compute amount of metaplast that is reattached into the matrix (@@ and becoming inert)
+    reattached = min.(state.MetaplastCrossLinkRate[1:end-1, cell] * dt,
+                      state.ξmetaplast[1:end-1, cell])
     @assert all(reattached .>= 0.0)
+    
+    # compute change in volatile tar masses, and append the light gas change
+    ξ_increment = init_cell_mass * (cur_ftar .- prev_ftar)
+
+    # Rescale increment in tar masses to balance with the actual char depletion
+    # production of light gas and reattached metaplast
+    ξ_increment = balance_tar_masses(ξ_increment, char_depletion, new_lightgas,
+                                     state.ξmetaplast[:, cell], reattached)
+
+    # Deducting reattached metaplast from increment 
     ξ_increment -= reattached  
 
-    return ξ_increment / dt 
+    return vcat(ξ_increment, new_lightgas) / dt 
 end
+
+function balance_tar_masses(ξ_increment, char_depletion, new_lightgas,
+                            ξ_metaplast, rettached)
+    # We aim to balance ξ_increment (as computed from the basic CPD model) with the
+    # actual char depletion, production of light gas and reattached metaplast, to ensure
+    # mass balance.
+
+    # Compute the depletable metaplast, i.e. the part of current metaplast that
+    # will not be reattached
+    ξ_depletable = ξ_metaplast[1:end-1] - rettached
+    @assert all(ξ_depletable .+ eps() .>= 0.0)
+    total_depletable = sum(ξ_depletable)
+    @assert total_depletable + eps() >= 0.0
+
+    tar_mass_delta = char_depletion - new_lightgas # production/depletion of tar should
+                                                   # balance depletion of char and
+                                                   # production of light gas
+    if tar_mass_delta + total_depletable + eps() < 0
+        @assert tar_mass_delta < 0
+        # not enough metaplast left for the prescribed depletion.  
+        tar_mass_delta = -total_depletable
+    end
+
+    # We have now determined the total tar increment/decrement value: tar_mass_delta.
+    # We now need to rescale each bin in ξ_increment
+    ξ_inc_sum = sum(ξ_increment)
+    if abs(ξ_inc_sum) > eps() && (tar_mass_delta * ξ_inc_sum > 0)
+        # Both quantities have same sign; apply a simple rescaling
+        ξ_increment *= tar_mass_delta / ξ_inc_sum
+    else
+        # heuristic: add uniform vector
+        alpha = (tar_mass_delta - ξ_inc_sum) / length(ξ_increment)
+        ξ_increment .+= alpha * ones(length(ξ_increment))
+    end
+    #@assert abs(sum(ξ_increment) - tar_mass_delta) <= 1e-10 * max(abs(tar_mass_delta), abs(ξ_inc_sum))
+
+    # # add to metaplast, ensure nonzero components, and rescale if necessary
+    ξ_depletable_incremented = ξ_depletable + ξ_increment
+    tot_remaining = sum(ξ_depletable_incremented)
+
+    @assert tot_remaining + eps() >= 0.0
+
+    ξ_depletable_incremented[ξ_depletable_incremented .< 0.0] .= 0.0 # ensure nonnegative components
+    tmp = sum(ξ_depletable_incremented)
+    if tmp > 0.0
+        ξ_depletable_incremented = ξ_depletable_incremented * tot_remaining / tmp
+    end
+
+    # # the increment should now be of the right total value (tar_mass_delta),
+    # # and ensure nonnegativity when combined with the remaining metaplast
+    ξ_increment = ξ_depletable_incremented - ξ_depletable
+
+    return ξ_increment
+end
+
+
+# function cpd_increment(cell, state, state0, model, dt)
+
+#     prev_ftar = state0.ftar_and_gas[1:end-1, cell]
+#     cur_ftar = state.ftar_and_gas[1:end-1, cell]
+
+#     # Compute production of new gas
+#     prev_lightgas = state0.ftar_and_gas[end, cell]
+#     cur_lightgas = state.ftar_and_gas[end, cell]
+
+#     new_lightgas = cur_lightgas - prev_lightgas
+
+#     # The light gas produced above would result from the _original_ amount of mass.
+#     # Modify the numbers based on _remaining_ mass consideration
+#     init_cell_mass = state.BulkDensity[cell] * state.BulkVolume[cell] # initial cell mass    
+#     massfrac = state.TotalCellMass[cell] / init_cell_mass 
+
+#     new_lightgas = new_lightgas .* massfrac # only the remaining mass produces gas
+
+#     # compute change in volatile tar masses, and append the light gas change
+#     ξ_increment = init_cell_mass * vcat(cur_ftar .- prev_ftar, new_lightgas)
+    
+#     ξ_increment = max.(ξ_increment, 0.0) # @@ in line with treatment in original
+#                                          # CPD code (flash.m) Not sure if this
+#                                          # is physically consistent, since it
+#                                          # ignores actual decreases of bin contents
+
+#     # ξ_increment has been adjusted due to truncation.  We want to ensure that total production
+#     # of volatiles still equals the reduction in char mass, so we do a rescaling here
+#     # cur_char_mass = state.TotalCellMass[cell] - sum(state.ξ[:, cell])
+#     # last_char_mass = state0.TotalCellMass[cell] - sum(state0.ξ[:, cell])
+#     # total_detached_mass = last_char_mass - cur_char_mass
+
+#     # if sum(ξ_increment) > 0
+#     #     ξ_increment *= total_detached_mass / sum(ξ_increment)
+#     # else
+#     #     if total_detached_mass > 0 
+#     #         @show value(last_char_mass)
+#     #         @show value(cur_char_mass)
+#     #         @warn "No mass produced, but there is detached mass.  Roundoff error?"
+#     #     end
+#     # end
+
+#     # Deducting reattached metaplast from increment (may lead to negative increment, this is OK)
+#     reattached = min.(state.MetaplastCrossLinkRate[:, cell] * dt, state.ξmetaplast[:, cell])
+#     @assert all(reattached .>= 0.0)
+#     ξ_increment -= reattached  
+
+#     return ξ_increment / dt 
+# end
 
 

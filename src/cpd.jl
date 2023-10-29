@@ -289,10 +289,8 @@ function increment_bins(d_tarmass, d_bins, remaining_metaplast)
     # - the sum of d_bins and remaining_metaplast should be nonzero in each bin
 
     if sum(remaining_metaplast) + d_tarmass + eps() < 0
-        # @warn "Tar-mass to deduct is less than what is left.  Truncating." @@@@
-        # @show d_tarmass, sum(remaining_metaplast)
-        d_tarmass = sum(remaining_metaplast)
-        # error()
+        # @warn "Tar-mass to deduct is less than what is left.  Truncating."
+        d_tarmass = -sum(remaining_metaplast)
     end
 
     # rescale d_bins

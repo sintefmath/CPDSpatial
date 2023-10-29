@@ -97,6 +97,7 @@ end
     @inbounds for i in ix
         c_rate = compute_reaction_rate(cross_rate[:, i], Temperature[i], 0.0)
         target[:, i] = c_rate .* ξmetaplast[:, i]
+        target[end, i] = 0.0 # no cross-linking of light gas
     end
 end
 

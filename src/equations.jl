@@ -128,7 +128,7 @@ function face_volume_flux(left, right, face, face_sign, state, model)
     # Specific version for tpfa flux
     kgrad = TPFA(left, right, face_sign)
     upw = SPU(left, right)
-    ft = Jutul.flux_type(model.equations[:mass_conservation])
+    ft = Jutul.flux_type(model.equations[:ξ_conservation])
     
     # Override the standard flux computation defined in JutulDarcy, since our
     # setting is different (e.g. we do not define densities)
@@ -139,6 +139,7 @@ function face_volume_flux(left, right, face, face_sign, state, model)
     λ = 1.0 / JutulDarcy.phase_upwind(upw, state.PhaseViscosities, 1, qtmp)
     q = λ * qtmp
 
+    #q = q * 0; # @@@@@ Turn off all gas flux
     return q, upw
 end
 
@@ -157,6 +158,18 @@ end
     return ξflux
 end
 
+# Face flux for total mass
+@inline function Jutul.face_flux!(q_i, left, right, face, face_sign,
+                                  eq::ConservationLaw{:TotalCellMass, <:Any},
+                                  state, model::JutulCPDModel, dt,
+                                  flow_disc::TwoPointPotentialFlowHardCoded)
+
+    vapor_flux = Jutul.face_flux!(q_i, left, right, face, face_sign,
+                                  model.equations[:ξ_conservation],
+                                  state, model, dt, flow_disc)
+    return JutulDarcy.setindex(q_i, sum(vapor_flux), 1)
+end
+
 # Face flux for thermal energy
 @inline function Jutul.face_flux!(Q, left, right, face, face_sign,
                                   eq::ConservationLaw{:TotalThermalEnergy, <:Any},
@@ -167,6 +180,7 @@ end
     upw = SPU(left, right)
     qv, upw_v = face_volume_flux(left, right, face, face_sign, state, model)
     q = thermal_heat_flux!(face, state, model, grad, upw, qv, upw_v)
+    
     return JutulDarcy.setindex(Q, q, 1)
 end
 
@@ -209,6 +223,18 @@ function Jutul.apply_forces_to_equation!(acc, storage, model::JutulCPDModel,
     end
 end
 
+function Jutul.apply_forces_to_equation!(acc, storage, model::JutulCPDModel,
+                                         eq::ConservationLaw{:TotalCellMass}, eq_s,
+                                         force::V, time) where {V <: AbstractVector{<:CPDFlowBoundaryCondition}}
+
+    fluxes = compute_boundary_mass_flux(force, storage.state)
+
+    for bc_ix in 1:length(force)
+        acc_i = view(acc, :, force[bc_ix].cell)
+        acc_i[] += sum(fluxes[bc_ix])
+    end
+end
+
 function compute_boundary_heat_flux(force_bc, state, time)
     heat_fluxes = Vector{typeof(state[:Temperature][1])}(undef, length(force_bc))
 
@@ -234,7 +260,6 @@ function compute_boundary_heat_flux(force_bc, state, time)
             heat_fluxes[bc_ix] += mflux 
         end
     end
-    
     return heat_fluxes
 end
 
@@ -275,9 +300,20 @@ function Jutul.update_equation!(eq_s::ConservationLawTPFAStorage,
 
     # Next, update accumulation, "intrinsic" sources and fluxes
     Jutul.@tic "accumulation" update_accumulation!(eq_s, law, storage, model, dt)
-    
-    Jutul.@tic "fluxes" update_half_face_flux!(eq_s, law, storage, model, dt)
+    Jutul.@tic "fluxes" update_half_face_flux!(eq_s, law, storage, model, dt) 
 
+end
+
+function Jutul.update_equation!(eq_s::ConservationLawTPFAStorage,
+                                law::ConservationLaw{:TotalCellMass},
+                                storage,
+                                model::JutulCPDModel, dt)
+    # Zero out any sparse indices
+    Jutul.reset_sources!(eq_s)
+
+    # Next, update accumulation and fluxes
+    Jutul.@tic "accumulation" update_accumulation!(eq_s, law, storage, model, dt)
+    Jutul.@tic "fluxes" update_half_face_flux!(eq_s, law, storage, model, dt)  
 end
 
 function Jutul.update_equation!(eq_s::ConservationLawTPFAStorage,
@@ -314,7 +350,6 @@ end
 
 function cpd_increment(cell, state, state0, model, dt)
 
-#    @show dt, value(state[:Temperature]), value(state0[:Temperature])
     prev_ftar = state0.ftar_and_gas[1:end-1, cell]
     cur_ftar = state.ftar_and_gas[1:end-1, cell]
 
@@ -327,7 +362,7 @@ function cpd_increment(cell, state, state0, model, dt)
     # The light gas produced above would result from the _original_ amount of mass.
     # Modify the numbers based on _remaining_ mass consideration
     init_cell_mass = state.BulkDensity[cell] * state.BulkVolume[cell] # initial cell mass    
-    massfrac = state.CurrentCellMass[cell] / init_cell_mass
+    massfrac = state.TotalCellMass[cell] / init_cell_mass 
 
     new_lightgas = new_lightgas .* massfrac # only the remaining mass produces gas
 
@@ -341,24 +376,24 @@ function cpd_increment(cell, state, state0, model, dt)
 
     # ξ_increment has been adjusted due to truncation.  We want to ensure that total production
     # of volatiles still equals the reduction in char mass, so we do a rescaling here
-    cur_char_mass = state.RemainingCharVolume[cell] * state.CharDensity[cell]
-    last_char_mass = state0.RemainingCharVolume[cell] * state0.CharDensity[cell]
-    total_detached_mass = last_char_mass - cur_char_mass
+    # cur_char_mass = state.TotalCellMass[cell] - sum(state.ξ[:, cell])
+    # last_char_mass = state0.TotalCellMass[cell] - sum(state0.ξ[:, cell])
+    # total_detached_mass = last_char_mass - cur_char_mass
 
-    if sum(ξ_increment) > 0
-        ξ_increment *= total_detached_mass / sum(ξ_increment)
-    else
-        if total_detached_mass > 0 
-            @show value(last_char_mass)
-            @show value(cur_char_mass)
-            @warn "No mass produced, but there is detached mass.  Roundoff error?"
-        end
-    end
+    # if sum(ξ_increment) > 0
+    #     ξ_increment *= total_detached_mass / sum(ξ_increment)
+    # else
+    #     if total_detached_mass > 0 
+    #         @show value(last_char_mass)
+    #         @show value(cur_char_mass)
+    #         @warn "No mass produced, but there is detached mass.  Roundoff error?"
+    #     end
+    # end
 
-    # Reattached mass is considered inert and will not further participate in the CPD calculations
+    # Deducting reattached metaplast from increment (may lead to negative increment, this is OK)
     reattached = min.(state.MetaplastCrossLinkRate[:, cell] * dt, state.ξmetaplast[:, cell])
     @assert all(reattached .>= 0.0)
-    ξ_increment -= reattached 
+    ξ_increment -= reattached  
 
     return ξ_increment / dt 
 end

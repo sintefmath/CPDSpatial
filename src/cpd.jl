@@ -123,8 +123,10 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     cvec = [x[3] for x in sol.u]     # fraction of char bridges as function of time
     gvec = [g(u) for u in sol.u]     # stage of process for light gas formation
 
-    pvec = £vec + cvec; # fraction of intact bridges as function of time
-
+    gvec = max.(gvec, 0.0); # avoid negative values from integration errors
+    pvec = max.(min.(£vec + cvec, 1.0), 0.0); # fraction of intact bridges as function of time
+                                              # (use min and max to ward off roundoff
+                                              # errors outside bounds) 
     input = (mpar.r, mpar.σp1-1, mpar.c₀, δvec, £vec, gvec, pvec, cvec,
              sol.t, g1.(sol.u), g2.(sol.u))
 
@@ -188,7 +190,165 @@ function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, 
                                           # light gas
     mplast_bins = Vector{Vector{Float64}}(undef, num_tsteps) # mplast_bins number for each bin at
                                                              # each time step.  For reporting purposes
-                                                             # only
+    # only
+    for i = 2:num_tsteps
+        # compute temperature and pressure, current timestep
+        T[i] = Tfun(time[i])
+        P = Pfun(time[i])
+
+        evacuated_tar = ftar[i-1]
+        remaining_mass = 1.0 - evacuated_tar
+        if remaining_mass < 0.0
+            remaining_mass = 0.0
+            @warn "Remaining mass negative."
+        end
+        #@assert remaining_mass >= 0.0
+
+        # computing percolation reference values, unadjusted for evacuated mass
+        f_gas_ref = f_gas(r, gvec[i], σ, c₀)
+        f_gas_ref_last = f_gas(r, gvec[i-1], σ, c₀) # @@@ can be recycled from last step
+        f_gas_ref = max(f_gas_ref, f_gas_ref_last) # current_fgas cannot be less than previous,
+                                                   # though it may happen from integration error in gvec
+        
+        f_tar_ref = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins)
+        f_tar_ref_last = f_tar(r, pvec[i-1], σ, c₀, δvec[i-1], £vec[i-1], bins=num_bins) # @@@
+        
+        # Compute light gas mass fraction, adjusted for evacuated metaplast
+        # (which does not contribute to light gas generation).
+        d_gas = (f_gas_ref - f_gas_ref_last) * remaining_mass # light gas produced this timestep,
+                                                              # adjusted for remaining mass
+        fgas[i] =  fgas[i-1] + d_gas
+
+        # compute char mass consumed over this timestep (tar is immobile, so we do
+        # not have to make adjustments for evacuated mass
+        d_char = sum(f_tar_ref) + f_gas_ref - sum(f_tar_ref_last) - f_gas_ref_last
+        @assert -2*eps() <= d_char <= remaining_mass
+        d_char = max(d_char, 0.0) # prevent negative mass
+        
+        # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
+        molweights = binned_molecular_weights(ma, r, pvec[i], σ, δvec[i], £vec[i], num_bins)
+
+        # compute cross-linking
+        dt = time[i] - time[i-1]
+
+        cl_rate = acr * exp(-ecr / R / T[i]) # cross-linking rate
+        clinkfrac = min(cl_rate * dt, 1) # fraction of metaplast that is re-attached
+        fcross[i] = fcross[i-1] + clinkfrac * fmetaplast[i-1]
+        
+        # compute actual tar production/depletion this step, and adjust for lost
+        # mass, considering that total production/depletion of tar and gas
+        # balances the actual change in tar mass.
+        d_tarmass = d_char - d_gas
+        d_bins = f_tar_ref - f_tar_ref_last
+        @assert d_tarmass >= sum(d_bins) - eps()
+        
+        # apply rescaling to make summed bins match actual produced tar, and add 
+        # to existing metaplast
+        remaining_metaplast = (1 .- clinkfrac) * mplast_prev_tstep[1:end-1]
+        f = increment_bins(d_tarmass, d_bins, remaining_metaplast)
+        
+        # apply flash calculation
+        (mplast_prev_tstep, vapors) = 
+            flash([f..., d_gas], [molweights..., light_gas_weight], T[i], P)
+
+        # the results above include the light gas, but we are only interested in the tar
+        # so we do not include the final component of mplast_prev_tstep and vapors
+        fmetaplast[i] = sum(mplast_prev_tstep[1:end-1])
+        ftar[i] = sum(vapors[1:end-1]) + ftar[i-1]
+
+        # compute char mass fraction as the remainder
+        fchar[i] = 1 - ftar[i] - fgas[i]
+
+        mplast_bins[i] = copy(mplast_prev_tstep)
+
+    end
+
+    fmetaplast[1] = fmetaplast[2] # we didn't know the initial value when
+                                  # initializing the array above
+    
+    return (time = time,
+            temp = T,
+            £vec =  £vec,
+            δvec = δvec,
+            cvec = cvec,
+            g1 = g1,
+            g2 = g2,
+            gvec = gvec,
+            fgas = fgas,
+            ftar = ftar,
+            fchar = fchar,
+            mplast_bins = mplast_bins,
+            fmetaplast = fmetaplast,
+            fcross = fcross)
+end
+
+function increment_bins(d_tarmass, d_bins, remaining_metaplast)
+
+    # - The total increment/decrement should be d_tarmass
+    # - The distribution of the increment should be as close as possible to d_bins
+    # - the sum of d_bins and remaining_metaplast should be nonzero in each bin
+
+    if sum(remaining_metaplast) + d_tarmass + eps() < 0
+        # @warn "Tar-mass to deduct is less than what is left.  Truncating." @@@@
+        # @show d_tarmass, sum(remaining_metaplast)
+        d_tarmass = sum(remaining_metaplast)
+        # error()
+    end
+
+    # rescale d_bins
+    tmp = sum(d_bins)
+    if tmp * d_tarmass > 0.0
+        # same sign, simple rescaling possible
+        d_bins = d_bins ./ tmp * d_tarmass
+    else
+        # heuristic: add uniform vector
+        alpha = (d_tarmass - sum(d_bins)) ./ length(d_bins)
+        d_bins .+= alpha .* ones(length(d_bins))
+    end
+    @assert abs(sum(d_bins) - d_tarmass) <= 1e-10 * max(abs(d_tarmass), abs(tmp))
+    
+    # add to metaplast, ensure nonzero components, and rescale if necessary
+    f = remaining_metaplast + d_bins
+    tot_remaining = sum(f)
+
+    @assert tot_remaining + eps() >= 0.0
+
+    f[f .< 0.0] .= 0.0
+    tmp = sum(f)
+    if tmp > 0.0
+        f = f ./ tmp * tot_remaining
+    end
+
+    return f
+end
+
+# @@@ Old version (closer in structure to original code, but playing loose with
+# mass conservation)
+function metaplast_percolation_model__old(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
+                                     pvec, cvec, time, g1, g2;
+                                     num_bins=20,
+                                     acr=3.0e15, # pre-exponential factor for crosslinking
+                                     ecr=65000.0 # activation energy for crosslinking
+                                     )
+    R = 1.9872036 # universal gas constant in cal/mol/K
+    num_tsteps = length(time)
+    light_gas_weight = r * ma / 2.0 # light gas molecular weight
+    
+    # return variables
+    fgas = zeros(num_tsteps)       # mass fraction of light gas
+    ftar = zeros(num_tsteps)       # mass fraction of tar (in volatile form, directly evacuated)
+    fchar = ones(num_tsteps)       # mass fraction of char
+    fmetaplast = zeros(num_tsteps) # mass fraction of metaplast
+    fcross = zeros(num_tsteps)     # mass fraction of crosslinking
+    T = Tfun(0) * ones(num_tsteps) # temperature
+
+    bins_prev_tstep = zeros(num_bins) # mass fraction of tar in each bin at previous time step
+    mplast_prev_tstep = zeros(num_bins+1) # mass fraction of metaplast in each bin at previous
+                                          # time step, and an extra bin to store liquid part of
+                                          # light gas
+    mplast_bins = Vector{Vector{Float64}}(undef, num_tsteps) # mplast_bins number for each bin at
+                                                             # each time step.  For reporting purposes
+    # only
     for i = 2:num_tsteps
         # compute temperature and pressure, current timestep
         T[i] = Tfun(time[i])

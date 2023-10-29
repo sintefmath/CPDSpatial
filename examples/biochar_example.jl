@@ -39,8 +39,7 @@ end
 # ============================================================================
 
 P0 = 101325.0; # 1 atm pressure
-Tfun = (t) -> 300.0 + min(20.0 * t/60, 500.0); # heating rate: 20 K/min @@@@@@
-#Tfun = (t) -> 300.0;
+Tfun = (t) -> 300.0 + min(20.0 * t/60, 500.0); # heating rate: 20 K/min 
 
 # timesteps need to be carefully set up
 # First we have a period with little happening until 11 minutes
@@ -99,19 +98,19 @@ model = SimulationModel(G, sys, context = DefaultContext());
 # and hemicellulose.  The easiest way to do this at present is to generate
 # separate parameter objects for each material type, and then fuse them by
 # 'zipping' values.
-#prm = setup_parameters(model, default_biochar);
-prm = setup_parameters(model, prm_defaults);
-lignin = copy(prm);
-#lignin = setup_parameters(model, default_lignin);
+prm = setup_parameters(model, default_biochar);
+#prm = setup_parameters(model, prm_defaults);
+#lignin = copy(prm);
+
+lignin = setup_parameters(model, default_lignin);
+lignin = setup_parameters(model, default_cellulose);
 cellulose = copy(lignin);
 hemicellulose = copy(lignin);
-# lignin = setup_parameters(model, default_lignin);
-# cellulose = copy(lignin);
-# hemicellulose = copy(lignin);
 
 # lignin = setup_parameters(model, default_lignin);
 # cellulose = setup_parameters(model, default_cellulose);
 # hemicellulose = setup_parameters(model, default_hemicellulose);
+#hemicellulose = copy(cellulose)
 
 material_specific_parameters = [:b_rate, :g_rate, :ρ_rate,
                                 :c₀, :p₀, :σ, :ma, :mb]
@@ -124,10 +123,9 @@ end
 ## We set up the initial state.  Here too, we create separate states
 # for each material, and fuse them to a single state in the end.
 matstates = Dict();
-CharDensity = Dict();
 for (material, key) in zip([lignin, cellulose, hemicellulose],
                          [:lignin, :cellulose, :hemicellulose])
-    matstates[key], CharDensity[key] =
+    matstates[key] = 
         CPDSpatial.setup_state(model, material[:p₀][1], material[:c₀][1],
                                material[:ma][1], material[:mb][1], material[:σ][1],
                                prm[:BulkDensity][1], P0, Tfun(0.0),
@@ -138,15 +136,10 @@ end
 
 state0 = Dict();
 for k in keys(matstates[:lignin])
-    # state0[k] = recombine(matstates[:lignin][k], matstates[:cellulose][k],
-    #                       matstates[:hemicellulose][k])
-    state0[k] = matstates[:lignin][k]
+    state0[k] = recombine(matstates[:lignin][k], matstates[:cellulose][k],
+                          matstates[:hemicellulose][k])
+    #state0[k] = matstates[:lignin][k]
 end
-prm[:CharDensity] = CharDensity[:lignin];
-                                 
-# prm[:CharDensity] = recombine(CharDensity[:lignin], CharDensity[:cellulose],
-#                                  CharDensity[:hemicellulose]);
-
 
 # ----------------------------------------------------------------------------
 ## We set up the external 'forcing', which here consists of the boundary conditions
@@ -167,9 +160,10 @@ forces = setup_forces(model, sources=nothing, bc=bc); #@@@@@
 #                    :mass_conservation=>1e-9,
 #                    :£δc=>1e-12));
 tolerances = Dict((:default=>1e-8,
-                   :pressure_equation=>1e-8, 
+                   :pressure_equation=>1e-6, 
                    :energy_conservation=>1e-9,
-                   :mass_conservation=>1e-9,
+                   :ξ_conservation=>1e-9,
+                   :total_mass_conservation=>1e-9,
                    :£δc=>1e-7));
 
 # Setup the simulator, with the model, the initial state and the parameters to
@@ -179,8 +173,8 @@ sim = Simulator(model, state0 = state0, parameters = prm);
 # Run the simulation (this may take a while)
 states, reports = simulate!(sim, timesteps, forces=forces, info_level=1,
                             max_residual=1e99, tolerances=tolerances,
-                            timestep_max_increase=2.0,
-                            max_timestep_cuts=20)
+                            max_timestep_cuts=10)
+                            #timestep_max_increase=2.0,
 
 # ============================================================================
 #                  ANALYSE THE RESULTS
@@ -189,7 +183,7 @@ states, reports = simulate!(sim, timesteps, forces=forces, info_level=1,
 Plots.pyplot() # use the `pyplot` backend for plotting
 cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
-
+N = length(states)
 # utility function to wait for a keypress
 function wait_for_key(info)
     print(stdout, info); read(stdin, 1); nothing;
@@ -199,21 +193,21 @@ end
 
 # compute tar and light gas yield over time, as well as the quantity of
 # metaplast present in the material
-lgas, tar, mplast = compute_yield_curves(bc, states, timesteps);
+lgas, tar, mplast = compute_yield_curves(bc, states, timesteps[1:N]);
 
 # compute reattached metaplast
-reattached = compute_reattached_metaplast(states, timesteps);
+reattached = compute_reattached_metaplast(states, timesteps[1:N]);
 
 # Plot the evolution of total char, gas and tar over time
 lgasfrac = cumsum(lgas)./ init_mass;
 tarfrac = cumsum(tar)./ init_mass;
 mplastfrac = mplast ./ init_mass;
 charfrac = 1 .- lgasfrac .- tarfrac;
-plot(cumtime, lgasfrac, reuse=false, label="light gas")
-plot!(cumtime, tarfrac, label = "volatile tar")
-plot!(cumtime , mplastfrac, label = "metaplast")
-plot!(cumtime, charfrac, label="char")
-plot!(cumtime,
-      cumsum([sum(x) for x in reattached] ./ init_mass),
+plot(cumtime[1:N], lgasfrac, reuse=false, label="light gas")
+plot!(cumtime[1:N], tarfrac, label = "volatile tar")
+plot!(cumtime[1:N], mplastfrac, label = "metaplast")
+plot!(cumtime[1:N], charfrac, label="char")
+plot!(cumtime[1:N],
+      cumsum([sum(x) for x in reattached[1:N]] ./ init_mass),
       label="reattached metaplast")
 

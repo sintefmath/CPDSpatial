@@ -158,7 +158,6 @@ struct TotalThermalEnergy <: Jutul.ScalarVariable end
 # Parameters
 struct CharHeatCapacity <: Jutul.ScalarVariable end # also used for metaplast
 struct BulkDensity <: Jutul.ScalarVariable end
-struct CharDensity <: Jutul.ScalarVariable end # also used for metaplast
 struct VaporHeatCapacity <: JutulDarcy.PhaseVariables end
 
 struct ThermalConductivity <: Jutul.ScalarVariable end
@@ -183,17 +182,7 @@ function Jutul.default_values(model::JutulCPDModel, ::JutulDarcy.BulkVolume)
     return copy(model.data_domain.data[:volumes][1]) # cell volumes
 end
 
-struct RemainingCharVolume <: Jutul.ScalarVariable end # volume of the char remaining in the cell
-
 # methods to update secondary variables
-
-@jutul_secondary function update_variable(U, var::RemainingCharVolume, model,
-                                          BulkDensity, BulkVolume, CharDensity, fchar, ix)
-    for i in ix
-        remaining_char_mass = BulkDensity[i] * BulkVolume[i] * fchar[i]
-        U[i] = remaining_char_mass / CharDensity[i]
-    end
-end
 
 # The parameter name for vapor density is 'PhaseMassDensities', in line with
 # usage in JutulDarcy.
@@ -207,6 +196,7 @@ end
 
 @jutul_secondary function update_variable!(U, var::VaporInternalEnergy, model,
                                            PhaseMassDensities, Temperature,
+                                           FluidVolume,
                                            VaporHeatCapacity, ix)
     for i in ix
         U[i] = VaporHeatCapacity[i] * sum(PhaseMassDensities[:, i]) * Temperature[i]
@@ -221,51 +211,21 @@ end
 end
 
 @jutul_secondary function update_variable!(U, var::NonvaporInternalEnergy, model,
-                                           CharDensity, ξmetaplast, Temperature,
-                                           RemainingCharVolume, CharHeatCapacity, BulkVolume, ix)
+                                           TotalCellMass, ξvapor, Temperature,
+                                           CharHeatCapacity, BulkVolume, ix)
     for i in ix
-        # internal energy of char
-        remaining_char_mass = CharDensity[i] * RemainingCharVolume[i]
-        char_energy = CharHeatCapacity[i] * remaining_char_mass * Temperature[i] / BulkVolume[i]
-        # internal energy of metaplast
-        mplast_density = sum(ξmetaplast[i]) / BulkVolume[i]
-        
-        metaplast_energy = CharHeatCapacity[i] * mplast_density * Temperature[i]
-        
-        U[i] = char_energy + metaplast_energy
+        nonvapor_mass = TotalCellMass[i] - sum(ξvapor[:, i])
+        U[i] = CharHeatCapacity[i] * nonvapor_mass * Temperature[i] / BulkVolume[i]
     end
 end
 
 @jutul_secondary function update_variable!(U, var::TotalThermalEnergy, model,
-                                           NonvaporInternalEnergy, RemainingCharVolume,
+                                           NonvaporInternalEnergy,
                                            VaporInternalEnergy, FluidVolume, BulkVolume, ix)
     for i in ix
         U[i] = NonvaporInternalEnergy[i] * BulkVolume[i] +
                VaporInternalEnergy[i] * FluidVolume[i]
     end
-end
-
-@jutul_secondary function update_variable!(U, var::TotalCellMass, model, fchar, RemainingCharVolume, CharDensity, ξ, ix)
-
-    # Compute the total mass currently contained within the cell.  This equals
-    # the mass remaining in the solid matrix, plus the mass of volatiles and gas
-    # that remains within the cell.
-    
-    # The solid mass is computed as the remaining part after released gas and
-    # tar has been subtracted.  The released gas and tar is computed by CPD, and
-    # is here provided in unmodified form, i.e., the fraction of tar and gas
-    # released based on the initial cell mass (not the current mass).
-
-    for i in ix
-        # The mass of the char only depends on the progression of the reference CPD reaction, 
-        # regardless of how much vapor/liquid has been evacuted or not
-        char_cell_mass = RemainingCharVolume[i] * CharDensity[i]
-
-        nonchar_cell_mass = sum(ξ[:, i]) # sum of all detached mass (whether vapor or liquid)
-
-        U[i] = char_cell_mass + nonchar_cell_mass
-    end
-    
 end
 
 @jutul_secondary function update_variable!(U, var::DetachedMass{:Metaplast}, model, ξ, ξvapor, ix)

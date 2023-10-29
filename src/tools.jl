@@ -28,8 +28,6 @@ Other parameters are:
 
 Returns:
 - `state`: the initial state
-- `char_density`: the initial char density.  This will normally be close to the
-   bulk density, but does not include the contribution of initial tar.
 """
 function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
                      ma::Real, mb::Real, σ::Real, bulk_density, P0::Real, T0::Real;
@@ -75,14 +73,12 @@ function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
     ξ0vapor = hcat(ξ0vapor...) # convert into matrix
 
     state = Jutul.setup_state(model, Dict(:Pressure => P0, 
-                                         :Temperature => T0,
-                                         :£δc => [£, δ, c],
-                                         :ξ => ξ0,
-                                         :ξvapor => ξ0vapor))
-    
-    char_density = (cell_masses - sum(ξ0, dims=1)[:]) ./ model.data_domain[:volumes]
-    
-    return state, char_density
+                                          :Temperature => T0,
+                                          :£δc => [£, δ, c],
+                                          :TotalCellMass => cell_masses .+ gmassvec,
+                                          :ξ => ξ0,
+                                          :ξvapor => ξ0vapor))
+    return state
 end
 
 """

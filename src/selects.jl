@@ -12,7 +12,7 @@ function Jutul.select_primary_variables!(S, sys::JutulCPDSystem, model::Simulati
     Tmax = 3000.0 # We assume here that we won't need temperatures above 3000K.
     Pmin = 101325.0 / 2 # One half of an atmosphere as minimum, again to avoid
                         # potential division by 0.
-    Pmax = 1e8 # 100 MPa as maximum (should not be attainable in practice anyway)
+    Pmax = 1e80 # 100 MPa as maximum (should not be attainable in practice anyway) @@@@@@@
     S[:Temperature] = JutulDarcy.Temperature(Tmin, Tmax, nothing, nothing)
     S[:Pressure] = JutulDarcy.Pressure(; max_rel=1.0,
                                        scale=1e5, minimum = Pmin, maximum = Pmax)
@@ -22,6 +22,8 @@ function Jutul.select_primary_variables!(S, sys::JutulCPDSystem, model::Simulati
                                    # solid matrix, whether vapor or liquid
     # CPD-related primary variables
     S[:£δc] = BridgeStatus() # Labile, side chains, char bridges
+
+    S[:TotalCellMass] = TotalCellMass() # Total mass in cell (solid + vapor + liquid)
 end
 
 function Jutul.select_secondary_variables!(S, sys::JutulCPDSystem, model::SimulationModel)
@@ -44,8 +46,6 @@ function Jutul.select_secondary_variables!(S, sys::JutulCPDSystem, model::Simula
     S[:ξvapor] = DetachedMass{:Vapor}() # vaporized mass (light gas + tar)
     S[:ξmetaplast] = DetachedMass{:Metaplast}() # metaplast (liquid phase)
 
-    S[:CurrentCellMass] = TotalCellMass() # total current mass in cell (solid, vapor and liquid)
-    S[:RemainingCharVolume] = RemainingCharVolume() # volume of remaining char
     S[:MetaplastCrossLinkRate] = DetachedMass{:MetaplastCrossLinkRate}() # cross-linked metaplast rate
 end
 
@@ -55,7 +55,6 @@ function Jutul.select_parameters!(S, sys::JutulCPDSystem, model::SimulationModel
     # Solid (i.e. non-vapor) related heat transport parameters
     S[:CharHeatCapacity] = CharHeatCapacity()
     S[:BulkDensity] = BulkDensity() # NB: this is the _initial_ density of the input material
-    S[:CharDensity] = CharDensity() # The density of just the char
     S[:BulkVolume] = JutulDarcy.BulkVolume() # _initial_ bulk volume
 
     # Vapor heat related heat transport parameters
@@ -92,6 +91,7 @@ function Jutul.select_minimum_output_variables!(out, sys::JutulCPDSystem, model)
 
     # Transport output variables
     push!(out, :TotalThermalEnergy)
+    push!(out, :TotalCellMass)
     push!(out, :Temperature)
     push!(out, :Pressure)
 
@@ -131,9 +131,12 @@ function Jutul.select_equations!(eqs, sys::JutulCPDSystem, model::SimulationMode
     # # Pressure equation
     eqs[:pressure_equation] = CPDPressureEquation()
     
-    # Conservation of vapor masses
+    # Conservation of detached masses
     mdisc = model.domain.discretizations.mass_flow
-    eqs[:mass_conservation] = ConservationLaw(mdisc, :ξ, model.system.num_tar_bins + 1)
+    eqs[:ξ_conservation] = ConservationLaw(mdisc, :ξ, model.system.num_tar_bins + 1)
+
+    # Conservation of total mass
+    eqs[:total_mass_conservation] = ConservationLaw(mdisc, :TotalCellMass)
 
     # CPD-specific equations
     eqs[:£δc] = £δcODEEquation()

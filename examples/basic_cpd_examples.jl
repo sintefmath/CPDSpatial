@@ -198,7 +198,7 @@ AEσb_lignin = ReactionRateParams(7.0e16, 55400.0, 500.0); # should equal 0.9 at
 AEσg_lignin = ReactionRateParams(2.3e19, 69000.0, 2600.0); # should equal 0.9 at a temperature of 948 K
 AEσρ_lignin = ReactionRateParams(1.7, 0.0, 0.0); # should equal 0.9 at a temperature of 948 K
 
-mpar_lignin = MaterialParams(3.5, 0.71, 78.0/208.0, 0.28); # (σp1, p₀, c₀, r)
+mpar_lignin = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28); # (σp1, p₀, c₀, r)
 
 start_temp = 300.0;
 end_temp = 800.0;
@@ -206,6 +206,45 @@ heating_duration = 1.0;
 total_duration = 3.0;
 rate = (end_temp - start_temp) / heating_duration;
 tfun_lignin = t -> start_temp + min(rate * t, end_temp);
-res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin, total_duration, t -> tfun_lignin(t));
+res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
+                 total_duration, t -> tfun_lignin(t), basic_model=false);
 
 plot_result(res_lignin);
+
+# ============================================================================
+# Test with material and reaction rate parameters for cellulose
+AEσb_cellulose = ReactionRateParams(2.0e16, 55400.0, 4100.0); # should equal 0.9 at a temperature of 948 K
+AEσg_cellulose = ReactionRateParams(3.0e15, 61200.0, 8100.0); # should equal 0.9 at a temperature of 948 K
+AEσρ_cellulose = ReactionRateParams(100, 0.0, 0.0); # should equal 0.9 at a temperature of 948 K
+
+mpar_cellulose = MaterialParams(3.0, 1.0, 0.0, 45.4/81.0, 0.081); # (σp1, p₀, c₀, r)
+
+start_temp = 300.0;
+end_temp = 800.0;
+heating_duration = 1.0;
+total_duration = 3.0;
+rate = (end_temp - start_temp) / heating_duration;
+tfun_cellulose = t -> start_temp + min(rate * t, end_temp);
+res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
+                    total_duration, t -> tfun_cellulose(t), max_tstep = 1e-2, basic_model = false);
+
+plot_result(res_cellulose);
+
+# ============================================================================
+# Test with material and reaction rate parameters for hemicellulose (Xylan)
+AEσb_xylan = ReactionRateParams(1.2e20, 51500.0, 100.0); # should equal 0.9 at a temperature of 948 K
+AEσg_xylan = ReactionRateParams(3.0e15, 38200.0, 5000.0); # should equal 0.9 at a temperature of 948 K
+AEσρ_xylan = ReactionRateParams(100, 0.0, 0.0); # should equal 0.9 at a temperature of 948 K
+
+mpar_xylan = MaterialParams(3.0, 1.0, 0.0, 43.0/77.5, 0.0775); # (σp1, p₀, c₀, r)
+
+start_temp = 300.0;
+end_temp = 800.0;
+heating_duration = 1.0;
+total_duration = 3.0;
+rate = (end_temp - start_temp) / heating_duration;
+tfun_xylan = t -> start_temp + min(rate * t, end_temp);
+res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
+                    total_duration, t -> tfun_xylan(t), max_tstep = 1e-2, basic_model = false);
+
+plot_result(res_xylan);

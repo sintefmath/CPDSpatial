@@ -1,6 +1,24 @@
 # Override convergence criterion for mass conservation law in JutulDarcy, since
 # we need to account for the possibility that a substance may have zero density
 function Jutul.convergence_criterion(model::JutulCPDModel,
+                                     storage, eq::ConservationLaw{:TotalCellMass}, eq_s, r;
+                                     dt = 1, kwarg...)
+
+    # compare error with initial cell mass
+    cell_masses = storage.state.BulkDensity .* storage.state.BulkVolume
+
+    rel_error = dt .* [maximum(abs.(r[:] ./ cell_masses))]
+
+    names = ["Tot. Mass"]
+    R = (Rel = (errors = rel_error, names = names), )
+    return R
+
+    
+end
+
+# Override convergence criterion for mass conservation law in JutulDarcy, since
+# we need to account for the possibility that a substance may have zero density
+function Jutul.convergence_criterion(model::JutulCPDModel,
                                      storage, eq::ConservationLaw{:ξ}, eq_s, r;
                                      dt = 1, kwarg...)
     M = global_map(model.domain)
@@ -44,7 +62,7 @@ function Jutul.convergence_criterion(model::JutulCPDModel, storage,
     # compute "mb"-like error
     mb_error = dt * [abs(sum(r[:])) / sum(storage.state.TotalThermalEnergy)]
 
-    names = "Energy"
+    names = ["Energy"]
     R = (CNV = (errors = cnv_error, names = names),
          MB = (errors = mb_error, names = names))
     return R
@@ -61,11 +79,10 @@ function Jutul.convergence_criterion(model::JutulCPDModel,
     # As above for energy conservation law
     small = mean_pressure == 0.0 ? eps() : min_fac * mean_pressure 
 
-    krull = abs.(r[:] ./ max.(storage.state.Pressure, small));
     rel_error = [maximum(abs.(r[:] ./ max.(storage.state.Pressure, small)))]
     
 
-    names = "Pressure"
+    names = ["Pressure"]
     R = (RelMax = (errors = rel_error, names = names), )
     return R
 end

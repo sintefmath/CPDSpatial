@@ -82,7 +82,7 @@ res_cpdheat = cpd(ReactionRateParams(2.6e15, 55400, 1800),
                   Tfun_CPDheat,
                   num_tar_bins=20,
                   max_tstep=duration/1000,
-                  basic_model=false); 
+                  metaplast_model=:modified);
 
 plot_result(res_cpdheat)
 
@@ -96,7 +96,7 @@ mpar = MaterialParams(4.6, 0.61, 0.0, (29.0-7.0)/267.0, 267.0/1000)
 
 duration = 45e-3 # 45 milliseconds
 
-res1_fortran = cpd(AEσb, AEσg, AEσρ, mpar, duration, t -> Tfun(t), basic_model=false);
+res1_fortran = cpd(AEσb, AEσg, AEσρ, mpar, duration, t -> Tfun(t), metaplast_model=:original);
 
 plot_result(res1_fortran)
 
@@ -176,7 +176,7 @@ duration = (end_temp - start_temp) / rate;
 Tfun = t -> start_temp + rate * t;
 
 for i = 1:5
-    res = cpd(AEσb, AEσg, AEσρ2, mpar, duration, Tfun, basic_model=true);
+    res = cpd(AEσb, AEσg, AEσρ2, mpar, duration, Tfun, metaplast_model=:original);
     plot!(p1, Tfun.(res.time), res.ftar, label="rate = $rate K/s", reuse=false)
     plot!(p2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s", reuse=false)
     rate *= 10.0;
@@ -207,7 +207,7 @@ total_duration = 3.0;
 rate = (end_temp - start_temp) / heating_duration;
 tfun_lignin = t -> start_temp + min(rate * t, end_temp);
 res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
-                 total_duration, t -> tfun_lignin(t), basic_model=false);
+                 total_duration, t -> tfun_lignin(t), metaplast_model=:modified);
 
 plot_result(res_lignin);
 
@@ -226,7 +226,7 @@ total_duration = 3.0;
 rate = (end_temp - start_temp) / heating_duration;
 tfun_cellulose = t -> start_temp + min(rate * t, end_temp);
 res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
-                    total_duration, t -> tfun_cellulose(t), max_tstep = 1e-2, basic_model = false);
+                    total_duration, t -> tfun_cellulose(t), max_tstep = 1e-2, metaplast_model=:modified);
 
 plot_result(res_cellulose);
 
@@ -245,6 +245,6 @@ total_duration = 3.0;
 rate = (end_temp - start_temp) / heating_duration;
 tfun_xylan = t -> start_temp + min(rate * t, end_temp);
 res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
-                    total_duration, t -> tfun_xylan(t), max_tstep = 1e-2, basic_model = false);
+                    total_duration, t -> tfun_xylan(t), max_tstep = 1e-2, metaplast_model=:modified);
 
 plot_result(res_xylan);

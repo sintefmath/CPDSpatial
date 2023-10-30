@@ -48,7 +48,8 @@ MaterialParams(σp1, p₀, c₀, r) = MaterialParams(σp1, p₀, c₀, r, 1.0)
 
 # ----------------------------------------------------------------------------
 """
-cpd(AEσb, AEσg, AEσV, mpar, duration, Tfun; basic_model=false)
+cpd(AEσb, AEσg, AEσV, mpar, duration, Tfun; metaplast_model = :none, 
+    Pfun = t -> 101325, num_tar_bins = 20, max_tstep = Inf)
 
 This function performs a cpd simulation. It takes in the following parameters:
 
@@ -59,7 +60,10 @@ This function performs a cpd simulation. It takes in the following parameters:
 - mpar: Material-specific parameters for coal or biomass.
 - duration: Duration of the process in seconds.
 - Tfun: A function representing the temperature as a function of time.
-- basic_model: If true, limit computations to basic model from initial (1988) paper
+- basic_model: Should be one of the following symbols
+  - :none - use the earliest proposed CPD model without metaplast
+  - :original - use the metaplast model from the original CPD paper (Fletcher, 1992)
+  - :modified - use a modified model that aims for mass conservation (unvalidated)
 """
 function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£⋆
              AEσg::ReactionRateParams,     # formation of light gas: δ → g₁
@@ -68,7 +72,7 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
              mpar::MaterialParams,         # coal/biomass-specific params
              duration::Float64,            # in seconds
              Tfun::Function;               # T(t): temperature as function of time
-             basic_model = false,          # if true, ignore metaplast model
+             metaplast_model = :original,  # if :none, ignore metaplast model
              Pfun::Function = t -> 101325, # P(t): pressure as function of time, in Pascal,
                                            # defaults to constant 1 atm = 101325Pa.  
                                            # Pressure is not used in the basic model.
@@ -110,12 +114,13 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     M = (u, t) -> [-kb(u, t)                             0           0;
                    2ρ(u, t) * kb(u, t) / ( ρ(u, t) + 1)  (-kg(u, t)) 0;
                    kb(u, t) / (ρ(u, t) + 1)              0           0]
-    
+
     Du(u, p, t) = M(u, t) * u # note that p (which Julia expects to be parameters) is not used
 
     # Solve the ODE
     prob = ODEProblem(Du, u₀, (0.0, duration))
-    sol = solve(prob, alg_hints=[:stiff], dtmax=max_tstep)
+    #sol = solve(prob, alg_hints=[:stiff], dtmax=max_tstep)
+    sol = solve(prob, Rodas4(), alg_hints=[:stiff], dtmax=max_tstep)
 
     # Compute mass fractions
     £vec = [x[1] for x in sol.u]     # fraction of labile bridges as function of time
@@ -130,10 +135,14 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     input = (mpar.r, mpar.σp1-1, mpar.c₀, δvec, £vec, gvec, pvec, cvec,
              sol.t, g1.(sol.u), g2.(sol.u))
 
-    return basic_model ? basic_percolation_model(input...) :
-                         metaplast_percolation_model(Tfun, Pfun, mpar.ma, input...,
-                                                     num_bins=num_tar_bins)
-        
+    if  metaplast_model == :none 
+        return basic_percolation_model(input...)
+    elseif metaplast_model == :original
+        return metaplast_percolation_model_orig(Tfun, Pfun, mpar.ma, input...,  num_bins=num_tar_bins)
+    elseif metaplast_model == :modified
+        return metaplast_percolation_model_modif(Tfun, Pfun, mpar.ma, input...,num_bins=num_tar_bins)
+    end
+    error("Inexistant metaplast model specified")
 end
 
 # ----------------------------------------------------------------------------
@@ -166,12 +175,12 @@ end
     
 Compute the metaplast percolation model from the 1992 paper.  
 """
-function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
-                                     pvec, cvec, time, g1, g2;
-                                     num_bins=20,
-                                     acr=3.0e15, # pre-exponential factor for crosslinking
-                                     ecr=65000.0 # activation energy for crosslinking
-                                     )
+function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
+                                          pvec, cvec, time, g1, g2;
+                                          num_bins=20,
+                                          acr=3.0e15, # pre-exponential factor for crosslinking
+                                          ecr=65000.0 # activation energy for crosslinking
+                                          )
     R = 1.9872036 # universal gas constant in cal/mol/K
     num_tsteps = length(time)
     light_gas_weight = r * ma / 2.0 # light gas molecular weight
@@ -190,50 +199,64 @@ function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, 
                                           # light gas
     mplast_bins = Vector{Vector{Float64}}(undef, num_tsteps) # mplast_bins number for each bin at
                                                              # each time step.  For reporting purposes
-    # only
-    for i = 2:num_tsteps
+    f_gas_ref_last = 0.0;
+    f_tar_ref_last = zeros(num_bins);
+    for ix = 1:num_tsteps
+        cur_ix = ix;
+        prev_ix = max(ix-1, 1); # first iteration uses zero-initialized arrays
+                                # to refer to previous timestep
+        
         # compute temperature and pressure, current timestep
-        T[i] = Tfun(time[i])
-        P = Pfun(time[i])
+        T[cur_ix] = Tfun(time[cur_ix])
+        P = Pfun(time[cur_ix])
 
-        evacuated_tar = ftar[i-1]
+        evacuated_tar = ftar[prev_ix]
         remaining_mass = 1.0 - evacuated_tar
         if remaining_mass < 0.0
             remaining_mass = 0.0
             @warn "Remaining mass negative."
         end
-        #@assert remaining_mass >= 0.0
 
         # computing percolation reference values, unadjusted for evacuated mass
-        f_gas_ref = f_gas(r, gvec[i], σ, c₀)
-        f_gas_ref_last = f_gas(r, gvec[i-1], σ, c₀) # @@@ can be recycled from last step
-        f_gas_ref = max(f_gas_ref, f_gas_ref_last) # current_fgas cannot be less than previous,
+        f_gas_ref = f_gas(r, gvec[cur_ix], σ, c₀)
+        f_gas_ref = max(f_gas_ref, f_gas_ref_last) # current reference fgas cannot be less than previous,
                                                    # though it may happen from integration error in gvec
         
-        f_tar_ref = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins)
-        f_tar_ref_last = f_tar(r, pvec[i-1], σ, c₀, δvec[i-1], £vec[i-1], bins=num_bins) # @@@
+        f_tar_ref = f_tar(r, pvec[cur_ix], σ, c₀, δvec[cur_ix], £vec[cur_ix], bins=num_bins)
         
         # Compute light gas mass fraction, adjusted for evacuated metaplast
         # (which does not contribute to light gas generation).
         d_gas = (f_gas_ref - f_gas_ref_last) * remaining_mass # light gas produced this timestep,
                                                               # adjusted for remaining mass
-        fgas[i] =  fgas[i-1] + d_gas
+                                                                              
+        fgas[cur_ix] =  fgas[prev_ix] + d_gas
+        # fgas[cur_ix] =  f_gas_ref * remaining_mass # @@ This is in line with the original formulation,
+        #                                             # and gives a result closer to the original code,
+        #                                             # but the conceptually right approach does not seem
+        #                                             # to be obvious, since fgas[i] now represents all the
+        #                                             # gas produced up to and until timestep i, under the
+        #                                             # assumtion that the total mass equaled _remaining_mass_
+        #                                             # throughout the process, which should underestimate
+        #                                             # the actual gas produced since the total mass at
+        #                                             # the previous timestep was higher than _remaining_mass_.
+        #                                             # d_gas = fgas[cur_ix] - fgas[prev_ix]
 
         # compute char mass consumed over this timestep (tar is immobile, so we do
         # not have to make adjustments for evacuated mass
         d_char = sum(f_tar_ref) + f_gas_ref - sum(f_tar_ref_last) - f_gas_ref_last
+
         @assert -2*eps() <= d_char <= remaining_mass
         d_char = max(d_char, 0.0) # prevent negative mass
         
         # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
-        molweights = binned_molecular_weights(ma, r, pvec[i], σ, δvec[i], £vec[i], num_bins)
+        molweights = binned_molecular_weights(ma, r, pvec[cur_ix], σ, δvec[cur_ix], £vec[cur_ix], num_bins)
 
         # compute cross-linking
-        dt = time[i] - time[i-1]
+        dt = time[cur_ix] - time[prev_ix] # will be zero on first iteration, but that's ok
 
-        cl_rate = acr * exp(-ecr / R / T[i]) # cross-linking rate
+        cl_rate = acr * exp(-ecr / R / T[cur_ix]) # cross-linking rate
         clinkfrac = min(cl_rate * dt, 1) # fraction of metaplast that is re-attached
-        fcross[i] = fcross[i-1] + clinkfrac * fmetaplast[i-1]
+        fcross[cur_ix] = fcross[prev_ix] + clinkfrac * fmetaplast[prev_ix]
         
         # compute actual tar production/depletion this step, and adjust for lost
         # mass, considering that total production/depletion of tar and gas
@@ -249,23 +272,23 @@ function metaplast_percolation_model(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, 
         
         # apply flash calculation
         (mplast_prev_tstep, vapors) = 
-            flash([f..., d_gas], [molweights..., light_gas_weight], T[i], P)
+            flash([f..., d_gas], [molweights..., light_gas_weight], T[cur_ix], P)
 
         # the results above include the light gas, but we are only interested in the tar
         # so we do not include the final component of mplast_prev_tstep and vapors
-        fmetaplast[i] = sum(mplast_prev_tstep[1:end-1])
-        ftar[i] = sum(vapors[1:end-1]) + ftar[i-1]
+        fmetaplast[cur_ix] = sum(mplast_prev_tstep[1:end-1])
+        ftar[cur_ix] = sum(vapors[1:end-1]) + ftar[prev_ix]
 
         # compute char mass fraction as the remainder
-        fchar[i] = 1 - ftar[i] - fgas[i]
+        fchar[cur_ix] = 1 - ftar[cur_ix] - fgas[cur_ix]
 
-        mplast_bins[i] = copy(mplast_prev_tstep)
+        mplast_bins[cur_ix] = mplast_prev_tstep
+
+        f_gas_ref_last = f_gas_ref
+        f_tar_ref_last = f_tar_ref
 
     end
 
-    fmetaplast[1] = fmetaplast[2] # we didn't know the initial value when
-                                  # initializing the array above
-    
     return (time = time,
             temp = T,
             £vec =  £vec,
@@ -322,7 +345,7 @@ end
 
 # @@@ Old version (closer in structure to original code, but playing loose with
 # mass conservation)
-function metaplast_percolation_model__old(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
+function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
                                      pvec, cvec, time, g1, g2;
                                      num_bins=20,
                                      acr=3.0e15, # pre-exponential factor for crosslinking

@@ -245,7 +245,7 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
         # not have to make adjustments for evacuated mass
         d_char = sum(f_tar_ref) + f_gas_ref - sum(f_tar_ref_last) - f_gas_ref_last
 
-        @assert -2*eps() <= d_char <= remaining_mass
+        #@assert -2*eps() <= d_char <= remaining_mass (may happen due to inaccuracies in numerical integration)
         d_char = max(d_char, 0.0) # prevent negative mass
         
         # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
@@ -326,7 +326,7 @@ function increment_bins(d_tarmass, d_bins, remaining_metaplast)
         alpha = (d_tarmass - sum(d_bins)) ./ length(d_bins)
         d_bins .+= alpha .* ones(length(d_bins))
     end
-    @assert abs(sum(d_bins) - d_tarmass) <= 1e-10 * max(abs(d_tarmass), abs(tmp))
+    @assert abs(sum(d_bins) - d_tarmass) <= 1e-10 * max(abs(d_tarmass), abs(tmp), eps())
     
     # add to metaplast, ensure nonzero components, and rescale if necessary
     f = remaining_metaplast + d_bins

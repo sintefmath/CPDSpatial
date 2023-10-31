@@ -36,7 +36,7 @@ function p⃰(p::Real, σ)
     # answer, and can avoid the call to the root-finding function
     (p <= 1/σ) ? p :
     (p >= 1.0 - eps()) ? 0.0 : # in reality, should never be larger than 1.0
-                         find_zero_wrapper(relation, p, (eps(), 1/σ - eps()))
+                         find_zero_wrapper(relation, p, (eps()^2, 1/σ - eps()))
 end
 
 function p⃰(p::Vector, σ)

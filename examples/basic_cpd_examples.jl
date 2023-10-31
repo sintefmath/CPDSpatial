@@ -82,7 +82,7 @@ res_cpdheat = cpd(ReactionRateParams(2.6e15, 55400, 1800),
                   Tfun_CPDheat,
                   num_tar_bins=20,
                   max_tstep=duration/1000,
-                  metaplast_model=:modified);
+                  metaplast_model=:original);
 
 plot_result(res_cpdheat)
 
@@ -207,7 +207,8 @@ total_duration = 3.0;
 rate = (end_temp - start_temp) / heating_duration;
 tfun_lignin = t -> start_temp + min(rate * t, end_temp);
 res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
-                 total_duration, t -> tfun_lignin(t), metaplast_model=:modified);
+                 total_duration, t -> tfun_lignin(t), max_tstep = 1e-2,
+                 metaplast_model=:modified);
 
 plot_result(res_lignin);
 

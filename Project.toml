@@ -16,3 +16,8 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SparsityTracing = "06eadbd4-12ad-4cbc-ab6e-10f8370940a5"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+Jutul = "=0.2.13"
+JutulDarcy = "=0.2.8"

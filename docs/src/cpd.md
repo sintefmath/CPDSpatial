@@ -13,7 +13,7 @@ In the literature, the model has also been used to model biomass devolatilizatio
 
 ## Implementation
 
-The `cpd()` function below aims to implement the model described in the following early papers:
+The `cpd()` function below aims to provide a basic Julia implementation of the CPD model as described in the following early papers:
 
 - [Chemical model of coal devolatilization using percolation lattice statistics](https://pubs.acs.org/doi/pdf/10.1021/ef00014a011)
   David M. Grant, Ronald J. Pugmire, Thomas H. Fletcher, and Alan R. Kerstein (1988)

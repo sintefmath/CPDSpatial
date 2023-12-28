@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 import Jutul: convergence_criterion
 import JutulDarcy: convergence_criterion
 

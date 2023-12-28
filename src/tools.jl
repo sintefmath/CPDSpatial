@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 using MAT
 
 # P0 and T0 represents pressure (in Pascal) and temperature (in Kelvin).

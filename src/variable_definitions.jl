@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 abstract type BridgeFraction <: Jutul.ScalarVariable end
 abstract type BridgeFractionTriple <: Jutul.VectorVariables end
 abstract type MassFraction <: Jutul.ScalarVariable end

@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 __precompile__(true)
 
 module CPDSpatial

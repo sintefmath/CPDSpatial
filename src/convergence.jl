@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 # Override convergence criterion for mass conservation law in JutulDarcy, since
 # we need to account for the possibility that a substance may have zero density
 function Jutul.convergence_criterion(model::JutulCPDModel,

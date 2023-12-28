@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 using Plots
 using Plots: plot 
 using PyPlot # for pyplot backend to Plots

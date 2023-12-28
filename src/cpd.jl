@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 export ReactionRateParams, MaterialParams, cpd
 
 using DifferentialEquations
@@ -366,8 +369,7 @@ function increment_bins(d_tarmass, d_bins, remaining_metaplast)
     return f
 end
 
-# @@@ Old version (closer in structure to original code, but playing loose with
-# mass conservation)
+# @@@ Old version (closer in structure to original code, but mass conservation is not ensured)
 function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
                                      pvec, cvec, time, g1, g2;
                                      num_bins=20,

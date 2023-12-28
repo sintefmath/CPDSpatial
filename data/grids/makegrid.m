@@ -1,3 +1,6 @@
+% Copyright (c) 2023 Odd Andersen
+% Copyright (c) 2023 SINTEF Digital
+
 function G = makegrid(R, ncells, varargin)
     opt = merge_options(struct('angle', 6 * pi / 180, ...
                                'exponent', 1.0, ...

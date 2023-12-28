@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 export prm_defaults, default_biochar, default_lignin, default_cellulose, default_hemicellulose
 
 # Suggested default parameter values for the spatial CPD model

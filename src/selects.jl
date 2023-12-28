@@ -1,3 +1,6 @@
+# Copyright (c) 2023 Odd Andersen
+# Copyright (c) 2023 SINTEF Digital
+
 function Jutul.setup_forces(model::JutulCPDModel, sources = nothing, bc = nothing)
 
     return (sources = sources, bc = bc)

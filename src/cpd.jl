@@ -3,6 +3,7 @@ export ReactionRateParams, MaterialParams, cpd
 using DifferentialEquations
 using SpecialFunctions
 
+
 """
     struct ReactionRateParams
 
@@ -10,9 +11,9 @@ A struct representing parameters for a reaction rate in Arrhenius form with
 distributed activation energy.
 
 # Fields
-- `A`: Preexponential factor.
-- `E`: Activation energy.
-- `σ`: Variation in the activation energy.
+- `A::Float64`: Preexponential factor.
+- `E::Float64`: Activation energy.
+- `σ::Float64`: Variation in the activation energy.
 
 """
 struct ReactionRateParams
@@ -28,11 +29,11 @@ end
 A struct representing coal/biomass-specific material parameters.
 
 # Fields
-- `σp1`: Coordination number.
-- `p₀`: Fraction of intact bridges (incl. charred bridges).
-- `c₀`: Fraction of charred bridges (≤ p₀)
-- `r`: Ratio of bridge mass `mb` to average site mass `ma`.
-- `ma`: Average site mass.
+- `σp1::Float64`: Coordination number.
+- `p₀::Float64`: Fraction of intact bridges (incl. charred bridges).
+- `c₀::Float64`: Fraction of charred bridges (≤ p₀)
+- `r::Float64`: Ratio of bridge mass `mb` to average site mass `ma`.
+- `ma::Float64`: Average site mass.
 """
 struct MaterialParams
     σp1::Float64 # coordination number (σ+1)
@@ -48,22 +49,44 @@ MaterialParams(σp1, p₀, c₀, r) = MaterialParams(σp1, p₀, c₀, r, 1.0)
 
 # ----------------------------------------------------------------------------
 """
-cpd(AEσb, AEσg, AEσV, mpar, duration, Tfun; metaplast_model = :none, 
-    Pfun = t -> 101325, num_tar_bins = 20, max_tstep = Inf)
+    cpd(AEσb, AEσg, AEσV, mpar, duration, Tfun; metaplast_model, Pfun, num_tar_bins, max_tstep)
 
 This function performs a cpd simulation. It takes in the following parameters:
 
-- AEσb: Reaction rate parameters for the bridge breaking reaction.
-- AEσg: Reaction rate parameters for the formation of light gas.
-- AEσρ: Reaction rate parameters representing the ratio of side chain formation 
-        to char bridge formation.
-- mpar: Material-specific parameters for coal or biomass.
-- duration: Duration of the process in seconds.
-- Tfun: A function representing the temperature as a function of time.
-- basic_model: Should be one of the following symbols
-  - :none - use the earliest proposed CPD model without metaplast
-  - :original - use the metaplast model from the original CPD paper (Fletcher, 1992)
-  - :modified - use a modified model that aims for mass conservation (unvalidated)
+# Arguments
+- `AEσb::ReactionRateParams`: Reaction rate parameters for the bridge breaking reaction.
+- `AEσg::ReactionRateParams`: Reaction rate parameters for the formation of light gas.
+- `AEσρ::ReactionRateParams`: Reaction rate parameters representing the ratio of side chain formation 
+                              to char bridge formation.
+- `mpar::MaterialParams`: Material-specific parameters for coal or biomass.
+- `duration::Float64`: Duration of the process in seconds.
+- `Tfun::Function`: A function representing the temperature as a function of time.
+- `metaplast_model::Symbol`: Should be one of the following:
+    - `:none` - use the basic CPD model without metaplast
+    - `:original` - use the metaplast model from the original CPD paper (Fletcher, 1992)
+    - `:modified` - use a modified model that aims for mass conservation (experimental)
+- `Tfun::Function` - A function representing pressure as a function of time.
+- `num_tar_bins::Integer` - Number of tar bins (if a metaplast model is used)
+- `max_tstep::Float64` - maximum timestep to use in the ODE integration (default: `Inf`)
+
+# Returns
+- A tuple with result values.  The following items (vectors) are always returned:
+    - `time`: timepoints
+    - `£vec`: fraction of labile bridges as function of time
+    - `δvec`: fraction of side chains as function of time
+    - `cvec`: fraction of char bridges as function of time
+    - `g1`: light gas from side chain conversion: 2 * (1-p) - δ  
+    - `g2`: light gas from char bridge formation: 2 * (c - c0)
+    - `gvec`: stage of process for light gas formation
+    - `fgas`: mass fraction of light gas
+    - `ftar`: mass fraction of tar
+    - `fchar`: mass fraction of tar
+
+- If a metaplast model is used, the following additional items (vectors) are also returned:
+    - `temp`: temperature
+    - `mplast_bins`: metaplast mass fraction (binned, last bin represents light gas)
+    - `fmetaplast`: metaplast  mass fraction (summed over bins, excluding light gas)
+    - `fcross`: crosslinking mass fraction
 """
 function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£⋆
              AEσg::ReactionRateParams,     # formation of light gas: δ → g₁
@@ -101,7 +124,7 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     lfrac(u) = 1 - u[1] / £₀             # stage of process for labile bridge breaking
 
     # Activation energy functions for bridge breaking, light gas formation, and
-    # side chain formation
+n    # side chain formation
     kb = (u, t) -> kfun(AEσb.A, E_activation(lfrac(u), AEσb.E, AEσb.σ), Tfun(t))
     kg = (u, t) -> kfun(AEσg.A, E_activation(gfrac(u), AEσg.E, AEσg.σ), Tfun(t))
     ρ =  (u, t) -> kfun(AEσρ.A, AEσρ.E, Tfun(t)) # The CPD model does not take variance

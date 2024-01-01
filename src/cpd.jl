@@ -85,7 +85,6 @@ This function performs a cpd simulation. It takes in the following parameters:
     - `:none` - use the basic CPD model without metaplast
     - `:original` - use the metaplast model from the original CPD paper (Fletcher, 1992)
     - `:modified` - use a modified model that aims for mass conservation (experimental)
-- `Tfun::Function` - A function representing pressure as a function of time.
 - `num_tar_bins::Integer` - Number of tar bins (if a metaplast model is used)
 - `max_tstep::Float64` - maximum timestep to use in the ODE integration (default: `Inf`)
 

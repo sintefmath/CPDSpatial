@@ -4,17 +4,228 @@ using Plots: plot
 using PyPlot # for pyplot backend to Plots
 using Interpolations
 using DelimitedFiles
+using DataStructures
 pyplot()  # set pyplot backend for Plots, for easy use of multiple windows
 
+export cpd_benchmarking
+
 # ----------------------------------------------------------------------------
+"""
+    cpd_benchmarking(choice)
+
+This script provides multiple examples of the `cpd()` function applied on
+different materials.  Most of the examples are taken from literature, with 
+which results can be compared and benchmarked.
+
+This function takes a single argument, `choice`, which specify which example you
+want to run.
+
+# Arguments
+- `choice::Symbol` - The different choices are:
+    - `:cpdheat` - Run cpd with the parameters from the original MATLAB CPDHeat code 
+    - `:fcompare` - Run cpd to reproduce example presented in the [original CPD Fortran code](http://www.et.byu.edu/~tom/cpd/cpd92/cpdfiles.html)
+    - `:three_coals` - Basic cpd simulation results for three different coal types
+    - `:heating_rate` - This example illustrates the effect of the heating rate on tar yield.  
+    - `:biochar` - Running CPD on three main components of biomaterials: *lignin*, *cellulose* and *hemicellulose* (xylan), using a *modified* metaplast model.
+
+"""
 function cpd_benchmarking(choice=nothing)
 
-    dispatch = Dict(:cpdheat => cpdheat_compare,
-                    :fcompare => cpd_fortran_compare)
+    dispatch = OrderedDict(:cpdheat => cpdheat_compare,
+                           :fcompare => cpd_fortran_compare,
+                           :three_coals => cpd_three_coals,
+                           :heating_rate => cpd_heating_rate,
+                           :biochar => cpd_biochar_consituents)
 
     get(dispatch, choice, () -> helptext(dispatch, choice))()
+end
 
+# ----------------------------------------------------------------------------
+"""
+Running CPD on three main components of biomaterials:
+- lignin
+- cellulose
+- hemicellulose (here: xylan)
+This example uses the *modified* (and experimental) metaplast model to ensure 
+mass conservation.  This is the same model that is used in the spatial examples.
+"""
+function cpd_biochar_consituents()
+
+    # Define reaction rate parameters for the three biomaterials
+    AEσb_lignin = ReactionRateParams(7.0e16, 55400.0, 500.0)
+    AEσg_lignin = ReactionRateParams(2.3e19, 69000.0, 2600.0)
+    AEσρ_lignin = ReactionRateParams(1.7, 0.0, 0.0)
+
+    AEσb_cellulose = ReactionRateParams(2.0e16, 55400.0, 4100.0)
+    AEσg_cellulose = ReactionRateParams(3.0e15, 61200.0, 8100.0)
+    AEσρ_cellulose = ReactionRateParams(100, 0.0, 0.0)
+
+    AEσb_xylan = ReactionRateParams(1.2e20, 51500.0, 100.0)
+    AEσg_xylan = ReactionRateParams(3.0e15, 38200.0, 5000.0)
+    AEσρ_xylan = ReactionRateParams(100, 0.0, 0.0)
+
+    # Define material parameters for the three biomaterials
+    mpar_lignin = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28) # (σp1, p₀, c₀, r)
+    mpar_cellulose = MaterialParams(3.0, 1.0, 0.0, 45.4/81.0, 0.081) # (σp1, p₀, c₀, r)
+    mpar_xylan = MaterialParams(3.0, 1.0, 0.0, 43.0/77.5, 0.0775); # (σp1, p₀, c₀, r)
+
+    # Define a heating profile and a duration for simulation
+    start_temp = 300.0;
+    end_temp = 800.0;
+    heating_duration = 1.0;
+    total_duration = 3.0;
+    rate = (end_temp - start_temp) / heating_duration;
+    Tfun = t -> start_temp + min(rate * t, end_temp);
+
+    # Running CPD on the three models
+    res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
+                     total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+    res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
+                        total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+    res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
+                    total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified);
+
+
+    # Print out information about parameters
+    display(md"**------- LIGNIN PARAMETERS-------**")
+    print_arguments(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin)
+    println()
+    display(md"**------- CELLULOSE PARAMETERS-------**")
+    print_arguments(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose)
+    println()
+    display(md"**------- XYLAN PARAMETERS-------**")
+    print_arguments(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan)
+
+    println()
+    display(Markdown.parse("**duration simulated:** " * string(total_duration) * " seconds"))
+    display(md"**Heating from 300K to 800K in 1s.**")
+    display(md"**Modified, mass-conservative metaplast model with 20 tar bins.**")
     
+    # plotting results
+    plot_result(res_lignin, toptitle="Lignin")
+    plot_result(res_cellulose, toptitle="Cellulose")
+    plot_result(res_xylan, toptitle="Xylan")
+    
+end
+
+# ----------------------------------------------------------------------------
+"""
+Using CPDSpatial to reproduce figure 6a from the paper "Chemical model for
+devolatilization. 2. Temperature and Heating Rate Effects on Product Yields"
+(1990) by Fletcher et al.  
+
+This example illustrates the effect of the heating rate on tar yield.  
+The curves produced display the same qualitative behavior and shape as in the
+original paper, but with somewhat different values (the scaling differs a bit). 
+Could this be due to slightly different parameters?
+"""
+function cpd_heating_rate()
+    # Define common reaction rate parameters (A, E and σ)
+    AEσb = ReactionRateParams(2.6e15, 55400, 1800)
+    AEσg = ReactionRateParams(3.0e15, 69000, 8100)
+    AEσρ = ReactionRateParams(2.0, 1510, 0); # should equal 0.9 at a temperature of 948 K
+
+    # Define material parameters
+    mpar = MaterialParams(4.6, 0.59, 0.11, 0.35); # (σp1, p₀, c₀, r) Illinois No. 6
+    
+    # Define the temperature profile (note that this will change in the loop below)
+    start_temp = 500; # in Kelvin
+    end_temp = 1500; # in Kelvin
+    rate = 1.0; # in Kelvin per second
+    duration = (end_temp - start_temp) / rate;
+    Tfun = t -> start_temp + rate * t;
+
+    subplot1 = plot(xlims=(start_temp, end_temp), ylims=(0, 0.3),
+                    xlabel="Temperature (K)",
+                    ylabel="Mass Fraction Tar",
+                    title="Tar Yield vs. Temperature", reuse=false)
+
+    subplot2 = plot(xlims=(start_temp, end_temp), ylims=(0, 0.8),
+                    xlabel="Temperature (K)",
+                    ylabel="Mass Fraction Volatiles",
+                    title="Volatiles vs. Temperature", reuse=false)
+
+    # compute and plot the tar yield curves for a successively higher heating
+    # rates.  For each curve, the heating rate is increased by one order of
+    # magnitude.
+    for i = 1:5
+        res = cpd(AEσb, AEσg, AEσρ, mpar, duration, Tfun, metaplast_model=:none)
+        plot!(subplot1, Tfun.(res.time), res.ftar, label="rate = $rate K/s")
+        plot!(subplot2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s")
+        rate *= 10.0;
+        duration = (end_temp - start_temp) / rate;
+        Tfun = t -> start_temp + rate * t;
+    end
+
+    # Print out information about parameters used to call cpd
+    print_arguments(AEσb, AEσg, AEσρ, mpar)
+    display(md"**No metaplast model used.**")
+    display(md"Note that average site mass is not used since we do not have any 
+               metaplast model.  Therefore, it is arbitrarily set to 1.0.")
+    println()
+    display(Markdown.parse("**duration simulated:** " * string(duration) * " seconds"))
+    display(md"**Heating rates vary from 1K/sec to 10.000 K/sec.**")
+    
+
+    @layout [a b]
+    p = plot(subplot1, subplot2, legend=:bottomright, size=(2000, 500))
+    display(p)
+end
+
+# ----------------------------------------------------------------------------
+"""
+Reproducing CPD simulation results for three coals presented in the paper 
+"Chemical model of coal devolatilization using percolation lattice statistics"
+(1988) by Grant et al.  These coals are:
+- zap lignite
+- high volatile bituminous coal
+- Montana Rosebud subbituminous coal
+Note that there are discrepancies, which could be partly due to a slightly
+different thermal profile.
+"""
+function cpd_three_coals()
+
+    ## Define common reaction rate parameters (A, E and σ)
+    AEσb = ReactionRateParams(2.6e15, 55400, 1800)
+    AEσg = ReactionRateParams(3.0e15, 69000, 8100)
+    AEσρ = ReactionRateParams(0.9, 0, 0) # constant, equal to 0.9
+
+    # Setting up material parameters
+    mpar_zap_lignite = MaterialParams(4.5, 0.61, 0.30, 0.82) # (σp1, p₀, c₀, r)
+    mpar_hv_coal = MaterialParams(4.6, 0.59, 0.11, 0.35) # (σp1, p₀, c₀, r)
+    mpar_MR_subcoal = MaterialParams(5.8, 0.56, 0.12, 0.35) # (σp1, p₀, c₀, r)
+
+    # duration of simulated time interval
+    duration = 70e-3 # 70 milliseconds
+
+    # setting up temperature function
+    Tfun = interpolated_temperature_function("data/cpd/sample_temp_profile.txt")
+
+    # calling cpd
+    res_zap_lignite = cpd(AEσb, AEσg, AEσρ, mpar_zap_lignite, duration, t -> Tfun(t),
+                          metaplast_model=:none)
+    res_hv_coal = cpd(AEσb, AEσg, AEσρ, mpar_hv_coal, duration, t -> Tfun(t),
+                      metaplast_model=:none)
+    res_MR_subcoal = cpd(AEσb, AEσg, AEσρ, mpar_MR_subcoal, duration, t -> Tfun(t),
+                         metaplast_model=:none)
+
+    # Print out information about parameters used to call cpd
+    print_arguments(AEσb, AEσg, AEσρ)
+    display(md"**CPD material parameters, zap lignite**")
+    println(mpar_zap_lignite)
+    display(md"**CPD material parameters, high volatile bituminous coal**")
+    println(mpar_hv_coal)
+    display(md"**CPD material parameters, Montana Rosebud subbituminous coal**")
+    println(mpar_MR_subcoal)
+    println()
+    display(Markdown.parse("**duration simulated:** " * string(duration) * " seconds"))
+    display(md"**Heating from 300K to 1500K in 15ms.**")
+    display(md"**Original metaplast model with 20 tar bins.**")
+
+    # graphical plot of the result    
+    plot_result(res_zap_lignite, toptitle="Zap lignite");
+    plot_result(res_hv_coal, toptitle="High volatile bitumious coal");
+    plot_result(res_MR_subcoal, toptitle="Montana Rosebud subbituminous coal");
 end
 
 # ----------------------------------------------------------------------------
@@ -45,8 +256,7 @@ function cpdheat_compare()
     AEσg = ReactionRateParams(3.0e15, 60000, 8100)
     AEσρ = ReactionRateParams(0.9, 0, 0)
     mpar = MaterialParams(sigp1, p0, c0, r, ma)
-    
-    
+
     res_cpdheat = cpd(AEσb, AEσg, AEσρ, mpar, 
                       duration,
                       Tfun_CPDheat,
@@ -57,7 +267,7 @@ function cpdheat_compare()
     # Print out information about parameters used to call cpd
     print_arguments(AEσb, AEσg, AEσρ, mpar)
     display(Markdown.parse("**duration simulated:** " * string(duration) * " seconds"))
-    display(md"**Heating from 300K to 1500K in 15ms.**")
+    display(md"**Heating from 298K to 1073K in 31ms.**")
     display(md"**Original metaplast model with 20 tar bins.**")
 
     # graphical plot of the result
@@ -105,14 +315,7 @@ function cpd_fortran_compare()
 
     # Read the temperature profile from the external file and set up a
     # corresponding temperature function
-    temperature_file = "data/cpd/sample_temp_profile.txt";
-    temperature_table = readdlm(temperature_file, ',',
-                                comments=true, comment_char='#');
-    temperature_table[:,1] *= 1e-3 # convert from milliseconds to seconds
-    
-    Tfun = linear_interpolation(temperature_table[:,1],
-                                temperature_table[:,2],
-                                extrapolation_bc=Flat());
+    Tfun = interpolated_temperature_function("data/cpd/sample_temp_profile.txt")
 
     # Run the CPD algorithm
     res = cpd(AEσb, AEσg, AEσρ, mpar, duration, t -> Tfun(t),
@@ -148,6 +351,19 @@ function cpd_fortran_compare()
 end
 
 # ----------------------------------------------------------------------------
+function interpolated_temperature_function(filename)
+    temperature_table = readdlm(filename, ',',
+                                comments=true, comment_char='#');
+
+    temperature_table[:,1] *= 1e-3 # convert from milliseconds to seconds
+    
+    Tfun = linear_interpolation(temperature_table[:,1],
+                                temperature_table[:,2],
+                                extrapolation_bc=Flat());
+end
+
+
+# ----------------------------------------------------------------------------
 function helptext(dispatch, choice)
 
     println("\nWhen calling this function, you should specify which benchmarking " *
@@ -159,7 +375,7 @@ function helptext(dispatch, choice)
         str2 = string(Base.doc(v))
         display(Markdown.parse(str1 * str2))
     end
-    
+    println("----------")
     if isnothing(choice)
         println("\nYou did not specify a choice.")
     else
@@ -204,7 +420,7 @@ function plot_result(res; toptitle="")
 end
 
 # ----------------------------------------------------------------------------
-function print_arguments(AEσb, AEσg, AEσρ, mpar)
+function print_arguments(AEσb, AEσg, AEσρ, mpar=nothing)
     println()
     display(md"**Reaction rate parameters for bridge breaking reaction**")
     println(AEσb)
@@ -212,7 +428,9 @@ function print_arguments(AEσb, AEσg, AEσρ, mpar)
     println(AEσg)
     display(md"**Reaction rate parameters ratio of side chain formation**")
     println(AEσρ)
-    display(md"**CPD material parameters**")
-    println(mpar)
+    if !isnothing(mpar)
+        display(md"**CPD material parameters**")
+        println(mpar)
+    end
 end
 

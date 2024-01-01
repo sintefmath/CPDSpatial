@@ -9,8 +9,10 @@ makedocs(;
          format=Documenter.HTML(; prettyurls=(ENV, "CI", "false") == "true"),
          pages = [
              "Home" => "index.md",
-             "CPD" => "cpd.md",
+             "Chemical Percolation and Devolatilization" => "cpd.md",
+             "Spatially embedded CPD" => "spatial.md",
+             "Examples" => "examples.md",
              "Docstrings" => "docstrings.md",
-             "Spatial" => "spatial.md"]
+         ]
          )
 

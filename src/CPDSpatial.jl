@@ -19,4 +19,8 @@ include("defaults.jl")
 include("JutulCPDModel.jl")
 include("tools.jl")
 
+# examples
+export cpd_benchmarking
+include("../examples/basic_cpd_benchmarking.jl")
+
 end # module

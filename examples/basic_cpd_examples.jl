@@ -68,7 +68,7 @@ end
 # We here use the parameters from the original CPDheat code and compare the results.
 # The only parameter we change is the duration, which we shorten so as to focus
 # on the interesting parts of the curves.
-# The correspondence is quite good, but note that there are some deviations, e.g. the
+# The correspondence is quite good, but there are some minor deviations, e.g. the
 # value of the peak of the metaplast curve is slightly higher than in the CPDheat
 # code.
 

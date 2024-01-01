@@ -24,6 +24,13 @@ struct ReactionRateParams
     E::Float64 
     σ::Float64
 end
+
+function Base.show(io::IO, rrp::ReactionRateParams)
+    println("Pre-exponential factor (A):      ", rrp.A)
+    println("Activation energy (E):           ", rrp.E)
+    println("Activation energy std. dev. (σ): ", rrp.σ)
+end
+
 # ----------------------------------------------------------------------------
 
 """
@@ -49,6 +56,16 @@ end
 # The following constructor is useful when running the basic model, where
 # average site masses are irrelevant
 MaterialParams(σp1, p₀, c₀, r) = MaterialParams(σp1, p₀, c₀, r, 1.0)
+
+function Base.show(io::IO, mpar::MaterialParams)
+    println("Coordination number plus 1 (σ+1):       ", mpar.σp1)
+    println("Fraction of intact bridges (p₀):        ", mpar.p₀,
+            " (NB: incl. charred bridges)")
+    println("Fraction of charred bridges (c₀):       ", mpar.c₀, "  (NB: c₀ ≤ p₀)")
+    println("Ratio of bridge to site mass (r=mb/ma): ", mpar.r)
+    println("Average site mass (ma):                 ", mpar.ma)
+end
+
 
 # ----------------------------------------------------------------------------
 """
@@ -127,7 +144,7 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     lfrac(u) = 1 - u[1] / £₀             # stage of process for labile bridge breaking
 
     # Activation energy functions for bridge breaking, light gas formation, and
-n    # side chain formation
+    # side chain formation
     kb = (u, t) -> kfun(AEσb.A, E_activation(lfrac(u), AEσb.E, AEσb.σ), Tfun(t))
     kg = (u, t) -> kfun(AEσg.A, E_activation(gfrac(u), AEσg.E, AEσg.σ), Tfun(t))
     ρ =  (u, t) -> kfun(AEσρ.A, AEσρ.E, Tfun(t)) # The CPD model does not take variance

@@ -8,7 +8,7 @@ makedocs(;
          remotes=nothing,
          format=Documenter.HTML(; prettyurls=(ENV, "CI", "false") == "true"),
          pages = [
-             "Home" => "home.md",
+             "Home" => "index.md",
              "CPD" => "cpd.md",
              "Docstrings" => "docstrings.md",
              "Spatial" => "spatial.md"]

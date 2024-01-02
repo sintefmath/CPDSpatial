@@ -1,13 +1,10 @@
 using Markdown
-using Plots
-import PyPlot # for pyplot backend to Plots
 using Interpolations
 using DelimitedFiles
 using DataStructures
+import GLMakie
 
 export cpd_benchmarking
-
-#Plots.pyplot() # set PyPlot backend (needed for multiple plot windows)
 
 # ----------------------------------------------------------------------------
 """
@@ -31,7 +28,6 @@ want to run.
 """
 function cpd_benchmarking(choice=nothing)
 
-    Plots.pyplot() # set PyPlot backend (needed for multiple plot windows)   
     dispatch = OrderedDict(:cpdheat => cpdheat_compare,
                            :fcompare => cpd_fortran_compare,
                            :three_coals => cpd_three_coals,
@@ -135,27 +131,32 @@ function cpd_heating_rate()
     duration = (end_temp - start_temp) / rate;
     Tfun = t -> start_temp + rate * t;
 
-    subplot1 = plot(xlims=(start_temp, end_temp), ylims=(0, 0.3),
-                    xlabel="Temperature (K)",
-                    ylabel="Mass Fraction Tar",
-                    title="Tar Yield vs. Temperature", reuse=false)
+    f = GLMakie.Figure()
+    ax1 = GLMakie.Axis(f[1,1],
+                       xlabel="Temperature (K)",
+                       ylabel="Mass Fraction Tar",
+                       title="Tar Yield vs. Temperature",
+                       width=500, height=500)
+    ax2 = GLMakie.Axis(f[1,2],
+                       xlabel="Temperature (K)",
+                       ylabel="Mass Fraction Volatiles",
+                       title="Volatiles vs. Temperature",
+                       width=500, height=500)
 
-    subplot2 = plot(xlims=(start_temp, end_temp), ylims=(0, 0.8),
-                    xlabel="Temperature (K)",
-                    ylabel="Mass Fraction Volatiles",
-                    title="Volatiles vs. Temperature", reuse=false)
-
-    # compute and plot the tar yield curves for a successively higher heating
-    # rates.  For each curve, the heating rate is increased by one order of
-    # magnitude.
     for i = 1:5
         res = cpd(AEσb, AEσg, AEσρ, mpar, duration, Tfun, metaplast_model=:none)
-        plot!(subplot1, Tfun.(res.time), res.ftar, label="rate = $rate K/s")
-        plot!(subplot2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s")
+        GLMakie.lines!(ax1, Tfun.(res.time), res.ftar, label="rate = $rate K/s")
+        GLMakie.lines!(ax2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s")
         rate *= 10.0;
         duration = (end_temp - start_temp) / rate;
         Tfun = t -> start_temp + rate * t;
     end
+    
+    GLMakie.axislegend(ax1, position=:rb)
+    GLMakie.axislegend(ax2, position=:rb)
+    GLMakie.resize_to_layout!(f)
+    display(GLMakie.Screen(), f)
+    
 
     # Print out information about parameters used to call cpd
     print_arguments(AEσb, AEσg, AEσρ, mpar)
@@ -166,10 +167,6 @@ function cpd_heating_rate()
     display(Markdown.parse("**duration simulated:** " * string(duration) * " seconds"))
     display(md"**Heating rates vary from 1K/sec to 10.000 K/sec.**")
     
-
-    @layout [a b]
-    p = plot(subplot1, subplot2, legend=:bottomright, size=(2000, 500))
-    display(p)
 end
 
 # ----------------------------------------------------------------------------
@@ -389,34 +386,38 @@ end
 
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
-    
+
+    f = GLMakie.Figure()
+
     # Create the first subplot with (£vec, δvec, cvec)
-    subplot1 = plot(res.time, res.£vec, label="£vec", reuse=false)
-    plot!(res.time, res.δvec/2, label="δvec/2")
-    plot!(res.time, res.cvec, label="cvec")
-    plot!(res.time, res.g1/2, label="g1/2")
-    plot!(res.time, res.g2/2, label="g2/2")
-    xlabel!("Time")
-    ylabel!("Fraction")
-    title!("Labile Bridges, Side Chains, Char Bridges, gas release")
+    ax1 = GLMakie.Axis(f[1,1],
+                       title="Labile Bridges, Side Chains, Char Bridges, gas release",
+                       xlabel="Time",
+                       ylabel="Fraction",
+                       width=500, height=500)
+    GLMakie.lines!(ax1, res.time, res.£vec, label="£vec", color = :blue)
+    GLMakie.lines!(ax1, res.time, res.δvec/2, label="δvec/2", color = :red)
+    GLMakie.lines!(ax1, res.time, res.cvec, label="cvec", color = :green)
+    GLMakie.lines!(ax1, res.time, res.g1/2, label="g1/2", color = :coral1)
+    GLMakie.lines!(ax1, res.time, res.g2/2, label="g2/2", color = :salmon4)
+    GLMakie.axislegend()
 
     # Create the second subplot with (fgas, ftar, fchar)
-    subplot2 = plot(res.time, res.fgas, label="fgas", reuse=false)
-    plot!(res.time, res.ftar, label="ftar")
-    plot!(res.time, res.fchar, label="fchar")
-
+    ax2 = GLMakie.Axis(f[1,2],
+                       title="Gas Formation, Tar and Char",
+                       xlabel="Time",
+                       ylabel="Mass Fraction",
+                       width=500, height=500)
+    GLMakie.lines!(ax2, res.time, res.fgas, label="fgas")
+    GLMakie.lines!(ax2, res.time, res.ftar, label="ftar")
+    GLMakie.lines!(ax2, res.time, res.fchar, label="fchar")
     if in(:fmetaplast, keys(res))
-        plot!(res.time, res.fmetaplast, label="fmetaplast")
+        GLMakie.lines!(res.time, res.fmetaplast, label="fmetaplast")
     end
-    
-    xlabel!("Time")
-    ylabel!("Mass Fraction")
-    title!("Gas Formation, Tar, and Char")
 
-    @layout [a b]
-    p = plot(subplot1, subplot2, legend=:bottomright, size=(1200, 500),
-                   plot_title=toptitle)
-    display(p)
+    GLMakie.axislegend()
+    GLMakie.resize_to_layout!(f)
+    display(GLMakie.Screen(), f)
 end
 
 # ----------------------------------------------------------------------------

@@ -1,11 +1,13 @@
 using Markdown
 using Plots
-using PyPlot # for pyplot backend to Plots
+import PyPlot # for pyplot backend to Plots
 using Interpolations
 using DelimitedFiles
 using DataStructures
 
 export cpd_benchmarking
+
+#Plots.pyplot() # set PyPlot backend (needed for multiple plot windows)
 
 # ----------------------------------------------------------------------------
 """
@@ -29,12 +31,12 @@ want to run.
 """
 function cpd_benchmarking(choice=nothing)
 
+    Plots.pyplot() # set PyPlot backend (needed for multiple plot windows)   
     dispatch = OrderedDict(:cpdheat => cpdheat_compare,
                            :fcompare => cpd_fortran_compare,
                            :three_coals => cpd_three_coals,
                            :heating_rate => cpd_heating_rate,
                            :biochar => cpd_biochar_consituents)
-
     get(dispatch, choice, () -> helptext(dispatch, choice))()
 end
 
@@ -178,7 +180,7 @@ Reproducing CPD simulation results for three coals presented in the paper
 - zap lignite
 - high volatile bituminous coal
 - Montana Rosebud subbituminous coal
-Note that there are discrepancies, which could be partly due to a slightly
+Note that there are some discrepancies, which could be partly due to a slightly
 different thermal profile.
 """
 function cpd_three_coals()
@@ -387,10 +389,9 @@ end
 
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
-    pyplot()
     
     # Create the first subplot with (£vec, δvec, cvec)
-    subplot1 = Plots.plot(res.time, res.£vec, label="£vec", reuse=false)
+    subplot1 = plot(res.time, res.£vec, label="£vec", reuse=false)
     plot!(res.time, res.δvec/2, label="δvec/2")
     plot!(res.time, res.cvec, label="cvec")
     plot!(res.time, res.g1/2, label="g1/2")
@@ -400,7 +401,7 @@ function plot_result(res; toptitle="")
     title!("Labile Bridges, Side Chains, Char Bridges, gas release")
 
     # Create the second subplot with (fgas, ftar, fchar)
-    subplot2 = Plots.plot(res.time, res.fgas, label="fgas", reuse=false)
+    subplot2 = plot(res.time, res.fgas, label="fgas", reuse=false)
     plot!(res.time, res.ftar, label="ftar")
     plot!(res.time, res.fchar, label="fchar")
 
@@ -413,7 +414,7 @@ function plot_result(res; toptitle="")
     title!("Gas Formation, Tar, and Char")
 
     @layout [a b]
-    p = Plots.plot(subplot1, subplot2, legend=:bottomright, size=(1200, 500),
+    p = plot(subplot1, subplot2, legend=:bottomright, size=(1200, 500),
                    plot_title=toptitle)
     display(p)
 end

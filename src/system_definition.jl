@@ -40,4 +40,4 @@ end
 # function that caps FluidVolume downwards.  In JutulDarcy, this cap is set as
 # eps(), but we may encounter even smaller volumes here, so we reset the cap to
 # eps^2
-Jutul.minimum_value(::JutulDarcy.FluidVolume) = eps()^2
+# Jutul.minimum_value(::JutulDarcy.FluidVolume) = eps()^2

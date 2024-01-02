@@ -22,6 +22,13 @@ Jutul.variable_scale(::DetachedMass) = 1.0;
 #Jutul.absolute_increment(ξ::DetachedMass) = p.max_abs
 #Jutul.relative_increment_limit(ξ::DetachedMass) = 1e1
 
+# we cannot use JutulDarcy.FluidVolume directly, since we need a smaller minimum value.
+struct CPDFluidVolume <: ScalarVariable end
+Jutul.minimum_value(::CPDFluidVolume) = eps()^2
+function Jutul.default_parameter_values(data_domain, model, param::CPDFluidVolume, symb)
+    return Jutul.default_parameter_values(data_domain, model, JutulDarcy.FluidVolume(), symb)
+end
+
 struct TotalCellMass <: Jutul.ScalarVariable end
 Jutul.minimum_value(::TotalCellMass) = 0.0
 

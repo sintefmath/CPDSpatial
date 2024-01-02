@@ -1,11 +1,9 @@
 using Markdown
 using Plots
-using Plots: plot 
 using PyPlot # for pyplot backend to Plots
 using Interpolations
 using DelimitedFiles
 using DataStructures
-pyplot()  # set pyplot backend for Plots, for easy use of multiple windows
 
 export cpd_benchmarking
 
@@ -346,7 +344,7 @@ function cpd_fortran_compare()
                    ftar = orig_result2[1:end-1,5],
                    fchar = orig_result2[1:end-1, 7],
                    fmetaplast = orig_result2[1:end-1,9])
-    plot_result(res_fortran, toptitle="Result from original CPD Fortan code")
+    plot_result(res_fortran, toptitle="Result from original CPD Fortran code")
     
 end
 
@@ -389,9 +387,10 @@ end
 
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
-
+    pyplot()
+    
     # Create the first subplot with (£vec, δvec, cvec)
-    subplot1 = plot(res.time, res.£vec, label="£vec", reuse=false)
+    subplot1 = Plots.plot(res.time, res.£vec, label="£vec", reuse=false)
     plot!(res.time, res.δvec/2, label="δvec/2")
     plot!(res.time, res.cvec, label="cvec")
     plot!(res.time, res.g1/2, label="g1/2")
@@ -401,7 +400,7 @@ function plot_result(res; toptitle="")
     title!("Labile Bridges, Side Chains, Char Bridges, gas release")
 
     # Create the second subplot with (fgas, ftar, fchar)
-    subplot2 = plot(res.time, res.fgas, label="fgas", reuse=false)
+    subplot2 = Plots.plot(res.time, res.fgas, label="fgas", reuse=false)
     plot!(res.time, res.ftar, label="ftar")
     plot!(res.time, res.fchar, label="fchar")
 
@@ -414,8 +413,8 @@ function plot_result(res; toptitle="")
     title!("Gas Formation, Tar, and Char")
 
     @layout [a b]
-    p = plot(subplot1, subplot2, legend=:bottomright, size=(1200, 500),
-             plot_title=toptitle)
+    p = Plots.plot(subplot1, subplot2, legend=:bottomright, size=(1200, 500),
+                   plot_title=toptitle)
     display(p)
 end
 

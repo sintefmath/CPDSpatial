@@ -154,6 +154,7 @@ function cpd_heating_rate()
     
     GLMakie.axislegend(ax1, position=:rb)
     GLMakie.axislegend(ax2, position=:rb)
+    GLMakie.activate!(title="Impact of heating rate")
     GLMakie.resize_to_layout!(f)
     display(GLMakie.Screen(), f)
     

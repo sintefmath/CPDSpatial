@@ -416,6 +416,7 @@ function plot_result(res; toptitle="")
     end
 
     GLMakie.axislegend()
+    GLMakie.activate!(title=toptitle)
     GLMakie.resize_to_layout!(f)
     display(GLMakie.Screen(), f)
 end

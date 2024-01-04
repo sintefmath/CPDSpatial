@@ -4,8 +4,8 @@
 
 using Jutul
 using JutulDarcy
-using Plots
-import PyPlot
+#using Plots
+#import PyPlot
 using MAT
 
 ## Define the 'recombine' function, which we will use when zipping parameter

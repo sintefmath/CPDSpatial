@@ -1,12 +1,10 @@
 # Copyright (c) 2023 Odd Andersen
 # Copyright (c) 2023 SINTEF Digital
 
-
 using Jutul
 using JutulDarcy
-#using Plots
-#import PyPlot
-using MAT
+using CPDSpatial
+using GLMakie
 
 ## Define the 'recombine' function, which we will use when zipping parameter
 #  vectors further down
@@ -146,7 +144,6 @@ states, reports = simulate!(sim, timesteps, forces=forces, info_level=1,
 #                  ANALYSE THE RESULTS
 # ============================================================================
 
-Plots.pyplot() # use the `pyplot` backend for plotting
 cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
 N = length(states)
@@ -169,14 +166,21 @@ lgasfrac = cumsum(lgas)./ init_mass;
 tarfrac = cumsum(tar)./ init_mass;
 mplastfrac = mplast ./ init_mass;
 charfrac = 1 .- lgasfrac .- tarfrac;
-plot(cumtime[1:N], lgasfrac, reuse=false, label="light gas")
-plot!(cumtime[1:N], tarfrac, label = "volatile tar")
-plot!(cumtime[1:N], mplastfrac, label = "metaplast")
-plot!(cumtime[1:N], charfrac, label="char")
-plot!(cumtime[1:N],
-      cumsum([sum(x) for x in reattached[1:N]] ./ init_mass),
-      label="reattached metaplast")
 
+f = GLMakie.Figure()
+ax = GLMakie.Axis(f[1,1],
+                  title="",
+                  xlabel="Time",
+                  ylabel="Fraction")
+GLMakie.lines!(ax, cumtime[1:N], lgasfrac, label="light gas")
+GLMakie.lines!(ax, cumtime[1:N], tarfrac, label="volatile tar")
+GLMakie.lines!(ax, cumtime[1:N], mplastfrac, label="metaplast")
+GLMakie.lines!(ax, cumtime[1:N], charfrac, label="char")
+GLMakie.lines!(ax, cumtime[1:N],
+               cumsum([sum(x) for x in reattached[1:N]] ./ init_mass),
+               label="reattached metaplast")
+GLMakie.axislegend()
+display(GLMakie.Screen(), f)
 wait_for_key("Press any key to continue\n");
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
@@ -187,20 +191,33 @@ lgdens = hcat([x[:ξ][end,:]./ G[:volumes] for x in states]...);
 liqdens = hcat([sum(x[:ξ] - x[:ξvapor], dims=1)[:] for x in states]...) ./ G[:volumes];
 attached = hcat(reattached...) ./ G[:volumes];
 
+
 # Plot a surface expressing the evolution of pressure in space and time.  Note
 # that there are some spikes associated with the thermal shock on the boudnary
 # at the start of the simulation, as well as when the last tar components
 # are in the centre towards the end.  High-resolution in space and time is needed.
-sfplot = Plots.surface(pmat', reuse=false, camera=(70, 30))
-display(sfplot)
 
-# Likewise, we can plot a surface expressing the light gas density in space
-# and time.
-sfplot2 = Plots.surface(lgdens', reuse=false, camera=(70, 30))
-display(sfplot2)
+fig, ax1 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+                           reverse(pmat, dims=1)./P0, axis=(type=Axis3,))
+ax1.title="Pressure evolution"
+ax1.xlabel="Distance from (spherical) particle center"
+ax1.ylabel="Time (ms)"
+ax1.zlabel="Pressure (atm)"
+display(GLMakie.Screen(), fig)
+wait_for_key("Press any key to continue\n");
+
+# Likewise, we can plot a surface expressing temperature in space and time.
+fig2, ax2 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+                           reverse(tmat, dims=1), axis=(type=Axis3,))
+ax2.title="Temperature evolution"
+ax2.xlabel="Distance from (spherical) particle center"
+ax2.ylabel="Time (ms)"
+ax2.zlabel="Temperature (K)"
+display(GLMakie.Screen(), fig)
+wait_for_key("Press any key to continue\n");
 
 # Results can also be saved as a matlab file, to benefit from its extensive
 # plotting facilities:
-using MAT
-matwrite("result.mat", Dict("P"=>pmat, "T"=>tmat, "X"=>lgmat, "Xd"=>lgdens,
-                            "attached" => attached, "Ld" => liqdens, "cumtime"=>cumtime))
+# using MAT
+# matwrite("result.mat", Dict("P"=>pmat, "T"=>tmat, "X"=>lgmat, "Xd"=>lgdens,
+#                             "attached" => attached, "Ld" => liqdens, "cumtime"=>cumtime))

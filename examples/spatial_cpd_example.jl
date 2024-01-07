@@ -3,9 +3,8 @@
 
 using Jutul
 using JutulDarcy
-using  Plots
-import PyPlot
-using MAT
+using CPDSpatial
+using GLMakie
 
 # ============================================================================
 #             PARAMETERS PROVIDING OPTIONS TO RUNNING THE SCRIPT
@@ -13,21 +12,21 @@ using MAT
 
 # To turn off heat transport and impose a uniform temperature throughout
 # the domain, set the following variable to `true`.
-imposed_global_temperature = false
+imposed_global_temperature = false;
 
 # The default is to use a radial grid, representing a 1D row of cells from
 # the centre to the edge of a spherical particle with radius 1 cm.
 # Se the variable to `false` to use a cartesian grid instead of a radial.
-use_radial_grid = true
+use_radial_grid = true;
 
 # We use atmospheric pressure, and make temperature a function of time,
 # rising quickly from 300 K to a maximum of 1500 K.
 P0 = 101325.0 # one atmosphere pressure, in Pascal
-Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/1.5e-2)
+Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/1.5e-2);
 #Tfun = (t) -> 300.0 + 1500.0 * min(1.0, t/15) # uncomment for a slow rise
 
 # simulated duration
-duration = 30.0 # in seconds
+duration = 30.0; # in seconds
 #duration = 45.0 # in seconds  # uncomment for a slow temperature rise
 
 # ============================================================================
@@ -65,7 +64,7 @@ sys = JutulCPDSystem(num_tar_bins=20,
 model = SimulationModel(G, sys, context = DefaultContext());
 
 # Set up a parameter storage for the model, with the default parameters
-prm = setup_parameters(model, prm_defaults)
+prm = setup_parameters(model, prm_defaults);
 
 # We now compute the state, using a utility function found in `tools.jl`.  This
 # function will compute the initial state.  The nontrivial parts of this
@@ -135,16 +134,9 @@ states, reports = simulate!(sim, timesteps, forces=forces, info_level=1,
 #                  ANALYSE THE RESULTS
 # ============================================================================
 
-Plots.pyplot() # use the `pyplot` backend for plotting
 cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
-
-# utility function to wait for a keypress
-function wait_for_key(info)
-    print(stdout, info); read(stdin, 1); nothing;
-end
-
-# Post-processing of results
+N = length(states)
 
 # compute tar and light gas yield over time, as well as the quantity of
 # metaplast present in the material
@@ -158,15 +150,21 @@ lgasfrac = cumsum(lgas)./ init_mass;
 tarfrac = cumsum(tar)./ init_mass;
 mplastfrac = mplast ./ init_mass;
 charfrac = 1 .- lgasfrac .- tarfrac;
-plot(cumtime, lgasfrac, reuse=false, label="light gas")
-plot!(cumtime, tarfrac, label = "volatile tar")
-plot!(cumtime , mplastfrac, label = "metaplast")
-plot!(cumtime, charfrac, label="char")
-plot!(cumtime,
-      cumsum([sum(x) for x in reattached] ./ init_mass),
-      label="reattached metaplast")
 
-wait_for_key("Press any key to continue\n");
+f = GLMakie.Figure()
+ax = GLMakie.Axis(f[1,1],
+                  title="",
+                  xlabel="Time",
+                  ylabel="Fraction")
+GLMakie.lines!(ax, cumtime[1:N], lgasfrac, label="light gas")
+GLMakie.lines!(ax, cumtime[1:N], tarfrac, label="volatile tar")
+GLMakie.lines!(ax, cumtime[1:N], mplastfrac, label="metaplast")
+GLMakie.lines!(ax, cumtime[1:N], charfrac, label="char")
+GLMakie.lines!(ax, cumtime[1:N],
+               cumsum([sum(x) for x in reattached[1:N]] ./ init_mass),
+               label="reattached metaplast")
+GLMakie.axislegend()
+display(GLMakie.Screen(), f)
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
 pmat = hcat([x[:Pressure] for x in states]...);
@@ -176,20 +174,32 @@ lgdens = hcat([x[:ξ][end,:]./ G[:volumes] for x in states]...);
 liqdens = hcat([sum(x[:ξ] - x[:ξvapor], dims=1)[:] for x in states]...) ./ G[:volumes];
 attached = hcat(reattached...) ./ G[:volumes];
 
-# Plot a surface expressing the evolution of pressure in space and time.  Note
-# that there are some spikes associated with the thermal shock on the boudnary
-# at the start of the simulation, as well as when the last tar components
-# are in the centre towards the end.  High-resolution in space and time is needed.
-sfplot = Plots.surface(pmat', reuse=false, camera=(70, 30))
-display(sfplot)
 
-# Likewise, we can plot a surface expressing the light gas density in space
-# and time.
-sfplot2 = Plots.surface(lgdens', reuse=false, camera=(70, 30))
-display(sfplot2)
+# Plot a surface expressing the evolution of pressure in space and time.  
+fig, ax1 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+                           reverse(pmat, dims=1)./P0, axis=(type=Axis3,))
+ax1.title="Pressure evolution"
+ax1.xlabel="Distance from (spherical) particle center"
+ax1.ylabel="Time (ms)"
+ax1.zlabel="Pressure (atm)"
+display(GLMakie.Screen(), fig)
 
-# Results can also be saved as a matlab file, to benefit from its extensive
-# plotting facilities:
-using MAT
-matwrite("result.mat", Dict("P"=>pmat, "T"=>tmat, "X"=>lgmat, "Xd"=>lgdens,
-                            "attached" => attached, "Ld" => liqdens, "cumtime"=>cumtime))
+# Likewise, we can plot a surface expressing temperature in space and time.
+fig2, ax2 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+                           reverse(tmat, dims=1), axis=(type=Axis3,))
+ax2.title="Temperature evolution"
+ax2.xlabel="Distance from (spherical) particle center"
+ax2.ylabel="Time (ms)"
+ax2.zlabel="Temperature (K)"
+display(GLMakie.Screen(), fig2)
+
+
+# averaging light gas density over the three materials
+fig3, ax3 = GLMakie.surface(G[:cell_centroids][1, :], cumtime[1:N],
+                            reverse(lgdens, dims=1), axis=(type=Axis3,))
+ax3.title="Light gas density"
+ax3.xlabel="Distance from (spherical) particle center"
+ax3.ylabel="Time (ms)"
+ax3.zlabel="Density kg/m^3"
+display(GLMakie.Screen(), fig3)
+

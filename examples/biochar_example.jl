@@ -6,6 +6,16 @@ using JutulDarcy
 using CPDSpatial
 using GLMakie
 
+# ============================================================================
+# This script is a modification of the `spatial_cpd_example.jl` script where
+# we try to emulate a pyrolysis of a thick particle of biomass that consists
+# of three different materials: cellulose, hemicellulose and lignin.
+# While this could be handled at the cell level by superposition of CPD results,
+# we here go for a very simple solution where each cell consist of a single
+# material, so one third of the cells represent cellulose, one third lignin etc.
+# The cells of different materials are then interleaved.
+# ============================================================================
+
 ## Define the 'recombine' function, which we will use when zipping parameter
 #  vectors further down
 function recombine(a::Matrix, b::Matrix, c::Matrix)
@@ -67,7 +77,6 @@ G, bc = radial_test_domain("data/grids/G_1cm_40_biochar.mat", P0, Tfun,
 
 # Define the system of equations to be solved
 sys = JutulCPDSystem(num_tar_bins=20, imposed_global_temperature=false); 
-#sys = JutulCPDSystem(num_tar_bins=20, imposed_global_temperature=true); 
 
 # Define the model, which combines the domain and the equation system
 model = SimulationModel(G, sys, context = DefaultContext());
@@ -147,10 +156,6 @@ states, reports = simulate!(sim, timesteps, forces=forces, info_level=1,
 cumtime = cumsum(timesteps); # vector with the exact time for each timestep
 init_mass = prm[:BulkDensity]' * G.data[:volumes][1]; # total initial mass
 N = length(states)
-# utility function to wait for a keypress
-function wait_for_key(info)
-    print(stdout, info); read(stdin, 1); nothing;
-end
 
 # Post-processing of results
 
@@ -181,7 +186,6 @@ GLMakie.lines!(ax, cumtime[1:N],
                label="reattached metaplast")
 GLMakie.axislegend()
 display(GLMakie.Screen(), f)
-wait_for_key("Press any key to continue\n");
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
 pmat = hcat([x[:Pressure] for x in states]...);
@@ -191,12 +195,7 @@ lgdens = hcat([x[:ξ][end,:]./ G[:volumes] for x in states]...);
 liqdens = hcat([sum(x[:ξ] - x[:ξvapor], dims=1)[:] for x in states]...) ./ G[:volumes];
 attached = hcat(reattached...) ./ G[:volumes];
 
-
-# Plot a surface expressing the evolution of pressure in space and time.  Note
-# that there are some spikes associated with the thermal shock on the boudnary
-# at the start of the simulation, as well as when the last tar components
-# are in the centre towards the end.  High-resolution in space and time is needed.
-
+# Plot a surface expressing the evolution of pressure in space and time.  
 fig, ax1 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
                            reverse(pmat, dims=1)./P0, axis=(type=Axis3,))
 ax1.title="Pressure evolution"
@@ -204,7 +203,6 @@ ax1.xlabel="Distance from (spherical) particle center"
 ax1.ylabel="Time (ms)"
 ax1.zlabel="Pressure (atm)"
 display(GLMakie.Screen(), fig)
-wait_for_key("Press any key to continue\n");
 
 # Likewise, we can plot a surface expressing temperature in space and time.
 fig2, ax2 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
@@ -213,11 +211,15 @@ ax2.title="Temperature evolution"
 ax2.xlabel="Distance from (spherical) particle center"
 ax2.ylabel="Time (ms)"
 ax2.zlabel="Temperature (K)"
-display(GLMakie.Screen(), fig)
-wait_for_key("Press any key to continue\n");
+display(GLMakie.Screen(), fig2)
 
-# Results can also be saved as a matlab file, to benefit from its extensive
-# plotting facilities:
-# using MAT
-# matwrite("result.mat", Dict("P"=>pmat, "T"=>tmat, "X"=>lgmat, "Xd"=>lgdens,
-#                             "attached" => attached, "Ld" => liqdens, "cumtime"=>cumtime))
+# averaging light gas density over the three materials
+lgdens_mean = lgdens[1:3:end,:] + lgdens[2:3:end,:] + lgdens[3:3:end,:];
+fig3, ax3 = GLMakie.surface(G[:cell_centroids][1, 2:3:end], cumtime[1:N],
+                            reverse(lgdens_mean, dims=1), axis=(type=Axis3,))
+ax3.title="Light gas density"
+ax3.xlabel="Distance from (spherical) particle center"
+ax3.ylabel="Time (ms)"
+ax3.zlabel="Density kg/m^3"
+display(GLMakie.Screen(), fig3)
+

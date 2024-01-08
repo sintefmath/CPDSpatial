@@ -31,7 +31,7 @@ prm_defaults = Dict([:c₀                          => 6.78e-2,                 
 # Note that in the literature, the flash parameters are typically given with
 # respect to atmospheres for pressure and g/mol for molecular weights, whereas
 # the defaults we use above are for Pa and kg/mol.
-# In the original units, the vlaue for flash_αβγ above would be [87058.0, 299.0, 0.5903].
+# In the original units, the value for flash_αβγ above would be [87058.0, 299.0, 0.5903].
 
 default_biochar = Dict([:flash_αβγ => [8.82115e9, 299 * 10^(3*0.5903), 0.5903], # flash parameters (α, β, γ)
                        :Permeability => 3.16e-15, # geometric average of 1e-16 (wood) and 1e-13 (coal) (m2)

@@ -285,7 +285,6 @@ function compute_boundary_mass_flux(force_bc, state)
             fluxes[bc_ix] = (q / mu) * rhos
         else
             # influx of gas from surroundings into particle
-            #@warn "Influx of gas not implemented.  Ignoring boundary condition." 
             # set zero flux, but preserve possible AD structure
             fluxes[bc_ix] = 0.0 * (q / mu) * state[:ξvapor][:, c] / state[:FluidVolume][c]
         end
@@ -447,56 +446,3 @@ function balance_tar_masses(ξ_increment, char_depletion, new_lightgas,
 
     return ξ_increment
 end
-
-
-# function cpd_increment(cell, state, state0, model, dt)
-
-#     prev_ftar = state0.ftar_and_gas[1:end-1, cell]
-#     cur_ftar = state.ftar_and_gas[1:end-1, cell]
-
-#     # Compute production of new gas
-#     prev_lightgas = state0.ftar_and_gas[end, cell]
-#     cur_lightgas = state.ftar_and_gas[end, cell]
-
-#     new_lightgas = cur_lightgas - prev_lightgas
-
-#     # The light gas produced above would result from the _original_ amount of mass.
-#     # Modify the numbers based on _remaining_ mass consideration
-#     init_cell_mass = state.BulkDensity[cell] * state.BulkVolume[cell] # initial cell mass    
-#     massfrac = state.TotalCellMass[cell] / init_cell_mass 
-
-#     new_lightgas = new_lightgas .* massfrac # only the remaining mass produces gas
-
-#     # compute change in volatile tar masses, and append the light gas change
-#     ξ_increment = init_cell_mass * vcat(cur_ftar .- prev_ftar, new_lightgas)
-    
-#     ξ_increment = max.(ξ_increment, 0.0) # @@ in line with treatment in original
-#                                          # CPD code (flash.m) Not sure if this
-#                                          # is physically consistent, since it
-#                                          # ignores actual decreases of bin contents
-
-#     # ξ_increment has been adjusted due to truncation.  We want to ensure that total production
-#     # of volatiles still equals the reduction in char mass, so we do a rescaling here
-#     # cur_char_mass = state.TotalCellMass[cell] - sum(state.ξ[:, cell])
-#     # last_char_mass = state0.TotalCellMass[cell] - sum(state0.ξ[:, cell])
-#     # total_detached_mass = last_char_mass - cur_char_mass
-
-#     # if sum(ξ_increment) > 0
-#     #     ξ_increment *= total_detached_mass / sum(ξ_increment)
-#     # else
-#     #     if total_detached_mass > 0 
-#     #         @show value(last_char_mass)
-#     #         @show value(cur_char_mass)
-#     #         @warn "No mass produced, but there is detached mass.  Roundoff error?"
-#     #     end
-#     # end
-
-#     # Deducting reattached metaplast from increment (may lead to negative increment, this is OK)
-#     reattached = min.(state.MetaplastCrossLinkRate[:, cell] * dt, state.ξmetaplast[:, cell])
-#     @assert all(reattached .>= 0.0)
-#     ξ_increment -= reattached  
-
-#     return ξ_increment / dt 
-# end
-
-

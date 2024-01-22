@@ -1,7 +1,3 @@
-# Examples
-
-These examples are intended to demonstrate the functionality and use of `CPDSpatial`.
-
 ## Testing the CPD model without a spatial model
 
 This example is provide to demonstrate the use of the basic `cpd()` algorithm
@@ -15,8 +11,3 @@ addition to the original metaplast model.
 ```@docs
     cpd_benchmarking
 ```
-
-## Testing the CPD model embedded in a spatial model using JutulDarcy
-
-### Simple case
-### Composite biomaterial case

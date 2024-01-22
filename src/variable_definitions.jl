@@ -174,6 +174,7 @@ struct VaporHeatCapacity <: JutulDarcy.PhaseVariables end
 struct ThermalConductivity <: Jutul.ScalarVariable end
 Jutul.associated_entity(::ThermalConductivity) = Faces()
 
+"""Docstring for TemperatureProfile"""
 struct TemperatureProfile <: Jutul.JutulForce
     Tfun::Function  # t -> T(t), temperature as function of time
 end

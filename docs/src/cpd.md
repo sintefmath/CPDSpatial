@@ -30,12 +30,19 @@ The original creators of the CPD model have made a number of resources [availabl
 
 We have significantly benefitted from these resources during the development of `CPDSpatial`, but do not claim any affiliation with the  authors of the original papers.
 
-# Source code documentation
+## Top-level function and associated arguments
 ```@docs
 ReactionRateParams
 MaterialParams
 cpd(AEσb::ReactionRateParams, AEσg::ReactionRateParams,
 AEσρ::ReactionRateParams, mpar::MaterialParams,
 duration::Float64,Tfun::Function; metaplast_model, Pfun::Function, num_tar_bins, max_tstep)
+```
 
+## Functions for flash and percolation calculations
+```@docs
+flash
+f_gas
+f_tar
+binned_molecular_weights
 ```

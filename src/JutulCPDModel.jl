@@ -8,7 +8,7 @@ using SpecialFunctions # for erfinv
 export JutulCPDSystem, JutulCPDModel, select_primary_variables!
 export select_secondary_variables!, select_default_darcy_parameters!
 export ArrheniusReactionRate, values_per_entity, setup_state
-export TemperatureProfile 
+export TemperatureProfile, CPDFlowBoundaryCondition
 
 include("system_definition.jl")
 include("variable_definitions.jl")

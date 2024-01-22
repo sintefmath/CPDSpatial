@@ -7,7 +7,7 @@ export flash
 
 # ----------------------------------------------------------------------------
 """
-    flash(`binned_component_masses`, `binned_weights`, `temperature`, `pressure`)
+    flash(binned_component_masses, binned_weights, temperature, pressure)
    
 This function performs a flash calculation. It takes in the following parameters:
 

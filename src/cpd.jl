@@ -349,7 +349,7 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
     fmetaplast = zeros(num_tsteps) # mass fraction of metaplast
     fcross = zeros(num_tsteps)     # mass fraction of crosslinking
     T = Tfun(0) * ones(num_tsteps) # temperature
-n
+
     bins_prev_tstep = zeros(num_bins) # mass fraction of tar in each bin at previous time step
     mplast_prev_tstep = zeros(num_bins+1) # mass fraction of metaplast in each bin at previous
                                           # time step, and an extra bin to store liquid part of

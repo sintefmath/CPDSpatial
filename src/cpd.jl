@@ -368,7 +368,8 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
         P = Pfun(time[cur_ix])
 
         evacuated_tar = ftar[prev_ix]
-        remaining_mass = 1.0 - evacuated_tar
+        #remaining_mass = 1.0 - evacuated_tar # @@ This is more in line with original model
+        remaining_mass = 1.0 - evacuated_tar - fgas[prev_ix]; # @@ This is more in line with current spatial model
         if remaining_mass < 0.0
             remaining_mass = 0.0
             @warn "Remaining mass negative."

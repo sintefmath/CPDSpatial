@@ -399,7 +399,7 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
         #                                             # the previous timestep was higher than _remaining_mass_.
         #                                             # d_gas = fgas[cur_ix] - fgas[prev_ix]
 
-        # compute char mass consumed over this timestep (tar is immobile, so we do
+        # compute char mass consumed over this timestep (char is immobile, so we do
         # not have to make adjustments for evacuated mass
         d_char = sum(f_tar_ref) + f_gas_ref - sum(f_tar_ref_last) - f_gas_ref_last
 

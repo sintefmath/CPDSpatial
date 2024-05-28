@@ -15,7 +15,7 @@ This function performs a flash calculation. It takes in the following parameters
 - `binned_component_masses` : tar mass binned by cluster size (from 1 to n)
 - `binned_weights`    : molecular weights for each tar bin (kg / mol)
 - `temperature`       : the temperature in Kelvin    
-- `pressure`          : pressure in atmospheres
+- `pressure`          : pressure in Pascal
 
 # Optional parameters:
 
@@ -34,7 +34,7 @@ M is the molecular weight of the tar, and T is the temperature.  The factors
 
 The flash calculation is based on the formula and arguments presented in 
 "Chemical Percolation Model for Devolatilization. 3. Direct Use of E NMR 
-Data To Predict Effecs of Coal Type" (1992) by Fletcher and Kerstein.
+Data To Predict Effects of Coal Type" (1992) by Fletcher and Kerstein.
 """
 function flash(binned_component_masses,
                binned_weights,
@@ -44,6 +44,9 @@ function flash(binned_component_masses,
                β = 299 * 10^(3*0.5903), # original β = 299 was for g/mol, not kg/mol
                γ = 0.5903)
 
+    pressure = pressure / 101325; # convert from Pa to atm (which is what α, β
+                                  # and γ have been defined for)
+    
     # handel degenerate case with no mass
     if sum(binned_component_masses) == 0
         dummy = zeros(length(binned_component_masses))

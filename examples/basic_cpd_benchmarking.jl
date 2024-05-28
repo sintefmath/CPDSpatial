@@ -62,7 +62,7 @@ function cpd_biochar_consituents()
     AEσρ_xylan = ReactionRateParams(100, 0.0, 0.0)
 
     # Define material parameters for the three biomaterials
-    mpar_lignin = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28) # (σp1, p₀, c₀, r)
+    mpar_lignin = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.208) # (σp1, p₀, c₀, r)
     mpar_cellulose = MaterialParams(3.0, 1.0, 0.0, 45.4/81.0, 0.081) # (σp1, p₀, c₀, r)
     mpar_xylan = MaterialParams(3.0, 1.0, 0.0, 43.0/77.5, 0.0775); # (σp1, p₀, c₀, r)
 

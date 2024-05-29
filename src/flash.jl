@@ -44,8 +44,6 @@ function flash(binned_component_masses,
                β = 299 * 10^(3*0.5903), # original β = 299 was for g/mol, not kg/mol
                γ = 0.5903)
 
-    pressure = pressure / 101325; # convert from Pa to atm (which is what α, β
-                                  # and γ have been defined for)
     
     # handel degenerate case with no mass
     if sum(binned_component_masses) == 0

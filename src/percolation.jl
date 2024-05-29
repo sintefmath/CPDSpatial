@@ -153,12 +153,20 @@ Compute the mass fraction of tar.
 - `bins::Int64`: Number of bins to use for the tar distribution.  If 0, the
                  aggregate result is returned.  Otherwise, the result is
                  returned as a vector of length `bins`.
+
+- `consistent_with_original_code::Bool`: if working with binned values, setting
+                                         this value to `true` aims for
+                                         consistent treatment with original
+                                         cpdheat code, but the bins will not add
+                                         up to the theoretical total.  If set to
+                                         `false`, the bins will be enforced to
+                                         add up to the total. (Default: true)
 # Returns
 - `result`: if `bins == 0`, the aggregate result is returned.  Otherwise,
             the result is returned as a vector of length `bins`, where 
             bin 'i' represents the fraction of tar in clusters of size i.
 """
-function f_tar(r, p, σ, c0, δ, £; bins=0)
+function f_tar(r, p, σ, c0, δ, £; bins=0, consistent_with_original_code=true)
     @assert all(value(p) .<= 1.0)
     if p == 1.0
         # all bridges are intact, no tar possible
@@ -189,12 +197,25 @@ function f_tar(r, p, σ, c0, δ, £; bins=0)
     end
 
     # if we got here, we want the tar disaggregated into bins by cluster size
-    
-    Fn = F(p, σ, bins = bins-1)
-    Qn = Fn ./ collect(1:bins-1)
 
-    res = fac * ( Φ(p, r, £, σ, δ) .* Fn .+ r * Ω(p, £, δ) .* Qn )
-    push!(res, total-sum(res))
+    if consistent_with_original_code
+        # ensure treatment close to the originally published cpd code
+        Fn = F(p, σ, bins = bins)
+        Qn = Fn ./ collect(1:bins)
+
+        res = fac * ( Φ(p, r, £, σ, δ) .* Fn .+ r * Ω(p, £, δ) .* Qn )
+    else
+        # ensure the total matches, but at the cost of diverging from the originally
+        # published cpdheat code.
+        Fn = F(p, σ, bins = bins-1)
+        Qn = Fn ./ collect(1:bins-1)
+
+        res = fac * ( Φ(p, r, £, σ, δ) .* Fn .+ r * Ω(p, £, δ) .* Qn )
+        push!(res, total-sum(res))
+    end
+
+    
+
 
     #res[1:bins-1] = fac * ( Φ(p, r, £, σ, δ) .* Fn .+ r * Ω(p, £, δ) .* Qn )
     #res[bins] = total - sum(res[1:bins-1])

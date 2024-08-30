@@ -166,11 +166,7 @@ Compute the mass fraction of tar.
             the result is returned as a vector of length `bins`, where 
             bin 'i' represents the fraction of tar in clusters of size i.
 """
-<<<<<<< HEAD
 function f_tar(r, p, σ, c0, δ, £; bins=0, consistent_with_original_code=true)
-=======
-function f_tar(r, p, σ, c0, δ, £; bins=0, l_remainder_in_last_bin=true)
->>>>>>> 2f0ba98 (In the original version, all mass that is not allocated to a mass bin during)
     @assert all(value(p) .<= 1.0)
     if p == 1.0
         # all bridges are intact, no tar possible

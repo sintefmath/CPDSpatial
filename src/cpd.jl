@@ -159,7 +159,7 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
                                            # Pressure is not used in the basic model.
              num_tar_bins = 20,            # number of tar bins (if basic_model = false)
              max_tstep = Inf,              #
-             l_remainder_in_last_bin=true 
+             consistent_with_original_code=true 
              )
     # Arrhenius rate law
     R = 1.9872036 # universal gas constant in cal/mol/K
@@ -225,7 +225,7 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
         return basic_percolation_model(input...)
     elseif metaplast_model == :original
         return metaplast_percolation_model_orig(Tfun, Pfun, mpar.ma, input...,  num_bins=num_tar_bins,
-        l_remainder_in_last_bin=l_remainder_in_last_bin)
+        consistent_with_original_code=consistent_with_original_code)
     elseif metaplast_model == :modified
         return metaplast_percolation_model_modif(Tfun, Pfun, mpar.ma, input...,num_bins=num_tar_bins)
     end
@@ -269,7 +269,7 @@ function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £
                                      num_bins=20,
                                      acr=3.0e15, # pre-exponential factor for crosslinking
                                      ecr=65000.0, # activation energy for crosslinking
-                                     l_remainder_in_last_bin=true
+                                     consistent_with_original_code=true
                                      )
     R = 1.9872036 # universal gas constant in cal/mol/K
     num_tsteps = length(time)
@@ -308,7 +308,7 @@ function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £
       
                                                 
         # compute binned tar mass fraction with no adjustments 
-        bins = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins, l_remainder_in_last_bin=l_remainder_in_last_bin)
+        bins = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins, consistent_with_original_code=consistent_with_original_code)
 
         # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
         molweights = binned_molecular_weights(ma, r, pvec[i], σ, δvec[i], £vec[i], num_bins)

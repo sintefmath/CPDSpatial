@@ -33,7 +33,8 @@ function cpd_benchmarking(choice=nothing)
                            :fcompare => cpd_fortran_compare,
                            :three_coals => cpd_three_coals,
                            :heating_rate => cpd_heating_rate,
-                           :biochar => cpd_biochar_consituents)
+                           :biochar => cpd_biochar_consituents,
+                           :biochar_nils => cpd_biochar_consituents_nils)
     get(dispatch, choice, () -> helptext(dispatch, choice))()
 end
 
@@ -73,14 +74,15 @@ function cpd_biochar_consituents()
     total_duration = 3.0;
     rate = (end_temp - start_temp) / heating_duration;
     Tfun = t -> start_temp + min(rate * t, end_temp);
+    max_tstep=heating_duration/10000.
 
     # Running CPD on the three models
     res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
-                     total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+                     total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original)
     res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
-                        total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+                        total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original)
     res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
-                    total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified);
+                    total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original);
 
 
     # Print out information about parameters
@@ -101,6 +103,94 @@ function cpd_biochar_consituents()
     # plotting results
     plot_result(res_lignin, toptitle="Lignin")
     plot_result(res_cellulose, toptitle="Cellulose")
+    plot_result(res_xylan, toptitle="Xylan")
+    
+end
+
+function cpd_biochar_consituents_nils()
+
+
+    # Define reaction rate parameters for the three biomaterials
+    AEσb_lignin = ReactionRateParams(7.0e16, 55400.0, 500.0)
+    AEσg_lignin = ReactionRateParams(2.3e19, 69000.0, 2600.0)
+    AEσρ_lignin = ReactionRateParams(1.7, 0.0, 0.0)
+
+    #AEσb_cellulose = ReactionRateParams(7.0e16, 55400.0, 500.0)
+    #AEσg_cellulose = ReactionRateParams(2.3e19, 69000.0, 2600.0)
+    #AEσρ_cellulose = ReactionRateParams(1.7, 0.0, 0.0)
+
+    AEσb_cellulose = ReactionRateParams(1.2e20, 51500.0, 100.0)
+    AEσg_cellulose = ReactionRateParams(3.0e15, 38200.0, 5000.0)
+    AEσρ_cellulose = ReactionRateParams(100, 0.0, 0.0)
+
+    #AEσb_cellulose = ReactionRateParams(2.0e16, 55400.0, 4100.0)
+    #AEσg_cellulose = ReactionRateParams(3.0e15, 61200.0, 8100.0)
+    #AEσρ_cellulose = ReactionRateParams(100, 0.0, 0.0)
+
+    AEσb_xylan = ReactionRateParams(1.2e20, 51500.0, 100.0)
+    AEσg_xylan = ReactionRateParams(3.0e15, 38200.0, 5000.0)
+    AEσρ_xylan = ReactionRateParams(100, 0.0, 0.0)
+
+    # Define material parameters for the three biomaterials
+    mpar_lignin    = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28) # (σp1, p₀, c₀, r, ma)
+    mpar_cellulose = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28) # (σp1, p₀, c₀, r, ma)
+    mpar_xylan     = MaterialParams(3.5, 0.71, 0.0, 78.0/208.0, 0.28) # (σp1, p₀, c₀, r, ma)
+    #mpar_cellulose = MaterialParams(3.0, 1.0, 0.0, 45.4/81.0, 0.081) # (σp1, p₀, c₀, r, ma)
+    #mpar_xylan = MaterialParams(3.0, 1.0, 0.0, 43.0/77.5, 0.0775); # (σp1, p₀, c₀, r, ma)
+
+    #(sigp1, p0, c0, r, ma) = (4.98, 0.53957, 6.78e-2, 0.35, 1.917e2 / 1000)
+   # mpar_lignin = MaterialParams(sigp1, p0, c0, r, ma)
+    #mpar_cellulose = MaterialParams(sigp1, p0, c0, r, ma)
+    #mpar_xylan = MaterialParams(sigp1, p0, c0, r, ma)
+
+    # Define a heating profile and a duration for simulation
+    lfletcher=0;
+    if (lfletcher == 0)
+        start_temp = 300.0;
+        end_temp = 1000.0;
+        heating_duration = 1.4;
+        total_duration = 1.4;
+        rate = (end_temp - start_temp) / heating_duration;
+        Tfun = t -> start_temp + min(rate * t, end_temp);
+        max_tstep=heating_duration/10000.
+    else
+        total_duration = 0.03;
+        max_tstep=total_duration/10000.
+        Tfun = t -> 300 + 1500 * min(1.0, t/1.5e-2)
+    end
+    
+    # Running CPD on the three models
+    #res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
+    #                 total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original)
+    #res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
+    #                    total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:modified)
+    res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
+                    total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original,
+                    l_remainder_in_last_bin=false);
+                    #total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:modified);
+
+    #println("time=",res_xylan.time)
+    #println("Temperature=",Tfun.(res_xylan.time))
+
+
+    # Print out information about parameters
+    #display(md"**------- LIGNIN PARAMETERS-------**")
+    #print_arguments(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin)
+    #println()
+    #display(md"**------- CELLULOSE PARAMETERS-------**")
+    #print_arguments(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose)
+    #println()
+    display(md"**------- XYLAN PARAMETERS-------**")
+    print_arguments(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan)
+
+    println()
+    display(Markdown.parse("**duration simulated:** " * string(total_duration) * " seconds"))
+    display(md"**Heating from 300K to 800K in 1s.**")
+    #display(md"**Modified, mass-conservative metaplast model with 20 tar bins.**")
+    
+    # plotting results
+    #plot_result(res_lignin, toptitle="Lignin")
+    #plot_result(res_cellulose, toptitle="Cellulose")
     plot_result(res_xylan, toptitle="Xylan")
     
 end
@@ -389,6 +479,16 @@ end
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
 
+    # Save data in file for plotting
+    filename="out1.txt"
+    i=1
+    ntimes=length(res.time)
+    open(filename, "w") do file
+        for i=1:ntimes
+            print(file, 1000.0*res.time[i]," ",res.£vec[i]," ",res.cvec[i]," ",res.δvec[i]/2.0," ",res.g1[i]/2.0," ",res.g2[i]/2.0," ",res.fgas[i]," ",res.ftar[i]," ",res.fchar[i]," ",res.fmetaplast[i]," ",res.temp[i],"\n")
+        end
+    end
+
     f = GLMakie.Figure()
 
     # Create the first subplot with (£vec, δvec, cvec)
@@ -396,20 +496,20 @@ function plot_result(res; toptitle="")
                        title="Labile Bridges, Side Chains, Char Bridges, gas release",
                        xlabel="Time",
                        ylabel="Fraction",
-                       width=500, height=500)
+                       width=500, height=150)
     GLMakie.lines!(ax1, res.time, res.£vec, label="£vec", color = :blue)
     GLMakie.lines!(ax1, res.time, res.δvec/2, label="δvec/2", color = :red)
     GLMakie.lines!(ax1, res.time, res.cvec, label="cvec", color = :green)
     GLMakie.lines!(ax1, res.time, res.g1/2, label="g1/2", color = :coral1)
     GLMakie.lines!(ax1, res.time, res.g2/2, label="g2/2", color = :salmon4)
-    GLMakie.axislegend()
+    GLMakie.axislegend(position=:lc)
 
     # Create the second subplot with (fgas, ftar, fchar)
-    ax2 = GLMakie.Axis(f[1,2],
+    ax2 = GLMakie.Axis(f[2,1],
                        title="Gas Formation, Tar and Char",
                        xlabel="Time",
                        ylabel="Mass Fraction",
-                       width=500, height=500)
+                       width=500, height=150)
     GLMakie.lines!(ax2, res.time, res.fgas, label="fgas")
     GLMakie.lines!(ax2, res.time, res.ftar, label="ftar")
     GLMakie.lines!(ax2, res.time, res.fchar, label="fchar")
@@ -417,7 +517,17 @@ function plot_result(res; toptitle="")
         GLMakie.lines!(res.time, res.fmetaplast, label="fmetaplast")
     end
 
-    GLMakie.axislegend()
+    GLMakie.axislegend(position=:lc)
+
+# Create the third subplot with temperature
+ax3 = GLMakie.Axis(f[3,1],
+title="Temperature",
+xlabel="Time",
+ylabel="T [K]",
+width=500, height=150)
+GLMakie.lines!(ax3, res.time, res.temp, label="T")
+#GLMakie.axislegend()
+    
     GLMakie.activate!(title=toptitle)
     GLMakie.resize_to_layout!(f)
     display(GLMakie.Screen(), f)

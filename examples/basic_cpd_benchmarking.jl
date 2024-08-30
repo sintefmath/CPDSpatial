@@ -166,7 +166,7 @@ function cpd_biochar_consituents_nils()
     #                    total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:modified)
     res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
                     total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:original,
-                    l_remainder_in_last_bin=false);
+                    consistent_with_original_code=true);
                     #total_duration, Tfun, max_tstep = max_tstep, metaplast_model=:modified);
 
     #println("time=",res_xylan.time)

@@ -67,45 +67,6 @@ function Base.show(io::IO, mpar::MaterialParams)
 end
 
 
-
-function inverf(y)
-    # NILS: I copied this function from Tom's fortran file for consinstency Check
-    #
-    # This function calculates the inverse of the area under the normal curve.
-    # If y = area(x), then given y, this function will calculate x.
-    # A table lookup is performed.
-
-    # Define the lookup tables
-    xx = [3.4, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0, 1.8, 1.6, 1.4,
-          1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0]
-    yy = [0.9997, 0.9993, 0.9987, 0.9974, 0.9953, 0.9918, 0.9861, 0.9772, 0.9641,
-          0.9452, 0.9192, 0.8849, 0.8413, 0.7881, 0.7257, 0.6554, 0.5793, 0.5]
-
-    fac = 1.0
-    # Check to see if y is within range
-    if y < 0.0228
-        return -2.0
-    elseif y < 0.5
-        yp = 1.0 - y
-        fac = -1.0
-    elseif y > 0.9997
-        return 3.5
-    else
-        yp = y
-    end
-
-    # Search for range
-    for i in 17:-1:1
-        if yp <= yy[i + 1]
-            x = xx[i] + (yp - yy[i]) * (xx[i + 1] - xx[i]) / (yy[i + 1] - yy[i])
-            return fac * x
-        end
-    end
-
-    return 0.0  # Just a default return, although the original Fortran code does not cover this case explicitly.
-end
-
-
 # ----------------------------------------------------------------------------
 """
     cpd(AEσb, AEσg, AEσV, mpar, duration, Tfun; metaplast_model, Pfun, num_tar_bins, max_tstep)
@@ -172,10 +133,6 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     E_activation(dfrac, E, σ) =
         E + sqrt(2) * σ * erfinv(clamp(2 * dfrac - 1, -1+sqrt(eps()), 1-sqrt(eps())))
 
-    # Alternative calculation of distributed activation energy based on the fortran file of Tom
-    E_activation_fletcher(dfrac, E, σ) =
-        E + σ * inverf(dfrac) 
-
     # initial condition vector
     u₀ = [£₀, δ₀, mpar.c₀]
 
@@ -224,8 +181,9 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
     if  metaplast_model == :none 
         return basic_percolation_model(input...)
     elseif metaplast_model == :original
-        return metaplast_percolation_model_orig(Tfun, Pfun, mpar.ma, input...,  num_bins=num_tar_bins,
-        consistent_with_original_code=consistent_with_original_code)
+        return metaplast_percolation_model_orig(Tfun, Pfun, mpar.ma, input...,
+                                                num_bins=num_tar_bins,
+                                                consistent_with_original_code=consistent_with_original_code)
     elseif metaplast_model == :modified
         return metaplast_percolation_model_modif(Tfun, Pfun, mpar.ma, input...,num_bins=num_tar_bins)
     end
@@ -340,23 +298,9 @@ function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £
         f = d_bins .+ ((1 .- clinkfrac) .* mplast_prev_tstep[1:end-1]) # adding back in what has not been vented
         d_gas  = max(fgas[i] - fgas[i-1], 0.0) # light gas produced this timestep
 
-
-        # NILS: Print some output for time=ptime
-        ptime=10000.
-        if (time[i]< ptime) && (time[i]>(ptime-0.001)) 
-            println("bins=",bins)   
-            println("length(f),length(d_bins),length(mplast_prev_tstep)=",length(f)," ",length(d_bins)," ",length(mplast_prev_tstep))
-            println("d_bins=",d_bins)   
-            println("f=",f)
-            println("clinkfrac=",clinkfrac)
-            println("mplast_prev_tstep=",mplast_prev_tstep)
-        end
-
-
         # apply flash calculation
         (mplast_prev_tstep, vapors) = 
             flash([f..., d_gas], [molweights..., light_gas_weight], T[i], P)
-
 
         # the results above include the light gas, but we are only interested in the tar
         # so we do not include the final component of mplast_prev_tstep and vapors
@@ -370,17 +314,6 @@ function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £
         fchar[i] = 1 - ftar[i] - fgas[i]
 
         mplast_bins[i] = copy(mplast_prev_tstep)
-
-        # NILS: Print some output for time=ptime
-        if (time[i]< ptime) && (time[i]>(ptime-0.001)) 
-            println("length(mplast_prev_tstep,length(vapors))=",length(mplast_prev_tstep)," ",length(vapors))
-            println("molweights=",molweights)
-            println("r, gvec[i], σ, c₀=",r," ", gvec[i]," ", σ," ", c₀)
-            println("i, time, fgas, fchar, ftar, fmet, temp=", i," ",time[i]," ",fgas[i]," ",fchar[i]," ",ftar[i]," ",fmetaplast[i]," ",T[i])
-            println("mplast_prev_tstep= ",mplast_prev_tstep)
-            return
-        end
-
     end
 
     fmetaplast[1] = fmetaplast[2] # we didn't know the initial value when

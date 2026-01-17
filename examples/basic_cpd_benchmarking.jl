@@ -25,7 +25,7 @@ want to run.
     - `:three_coals` - Basic cpd simulation results for three different coal types
     - `:heating_rate` - This example illustrates the effect of the heating rate on tar yield.  
     - `:biochar` - Running CPD on three main components of biomaterials: *lignin*, *cellulose* and *hemicellulose* (xylan), using a *modified* metaplast model.
-
+   - `:biochar_modif` - Running CPD on three main components of biomaterials: *lignin*, *cellulose* and *hemicellulose* (xylan), using a *modified* metaplast model with different parameters.
 """
 function cpd_benchmarking(choice=nothing)
 
@@ -34,7 +34,7 @@ function cpd_benchmarking(choice=nothing)
                            :three_coals => cpd_three_coals,
                            :heating_rate => cpd_heating_rate,
                            :biochar => cpd_biochar_consituents,
-                           :biochar_nils => cpd_biochar_consituents_nils)
+                           :biochar_modif => cpd_biochar_consituents_modif)
     get(dispatch, choice, () -> helptext(dispatch, choice))()
 end
 
@@ -107,7 +107,7 @@ function cpd_biochar_consituents()
     
 end
 
-function cpd_biochar_consituents_nils()
+function cpd_biochar_consituents_modif()
 
 
     # Define reaction rate parameters for the three biomaterials
@@ -479,16 +479,6 @@ end
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
 
-    # Save data in file for plotting
-    filename="out1.txt"
-    i=1
-    ntimes=length(res.time)
-    open(filename, "w") do file
-        for i=1:ntimes
-            print(file, 1000.0*res.time[i]," ",res.£vec[i]," ",res.cvec[i]," ",res.δvec[i]/2.0," ",res.g1[i]/2.0," ",res.g2[i]/2.0," ",res.fgas[i]," ",res.ftar[i]," ",res.fchar[i]," ",res.fmetaplast[i]," ",res.temp[i],"\n")
-        end
-    end
-
     f = GLMakie.Figure()
 
     # Create the first subplot with (£vec, δvec, cvec)
@@ -519,15 +509,6 @@ function plot_result(res; toptitle="")
 
     GLMakie.axislegend(position=:lc)
 
-# Create the third subplot with temperature
-ax3 = GLMakie.Axis(f[3,1],
-title="Temperature",
-xlabel="Time",
-ylabel="T [K]",
-width=500, height=150)
-GLMakie.lines!(ax3, res.time, res.temp, label="T")
-#GLMakie.axislegend()
-    
     GLMakie.activate!(title=toptitle)
     GLMakie.resize_to_layout!(f)
     display(GLMakie.Screen(), f)

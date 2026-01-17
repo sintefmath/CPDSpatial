@@ -135,7 +135,10 @@ function face_volume_flux(left, right, face, face_sign, state, model)
     
     # Override the standard flux computation defined in JutulDarcy, since our
     # setting is different (e.g. we do not define densities)
-    ∇p, T_f, gΔz  = JutulDarcy.flux_primitives(face, state, model, ft, kgrad, upw)
+    # flux_primitives removed in JutulDarcy from commit 58543bc9
+    #∇p, T_f, gΔz  = JutulDarcy.flux_primitives(face, state, model, ft, kgrad, upw) 
+    ∇p = JutulDarcy.pressure_gradient(state, kgrad)
+    T_f = JutulDarcy.effective_transmissibility(state, face, kgrad)
     
     # volumetric vapor flux
     qtmp = - (T_f .* ∇p)

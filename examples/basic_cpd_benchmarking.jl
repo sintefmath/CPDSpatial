@@ -40,7 +40,7 @@ function cpd_benchmarking(choice=nothing)
                            :fcompare => cpd_fortran_compare,
                            :three_coals => cpd_three_coals,
                            :heating_rate => cpd_heating_rate,
-                           :biochar => cpd_biochar_consituents,
+                           :biochar => cpd_biochar_constituents,
                            :biochar_modif => cpd_biochar_consituents_modif)
     get(dispatch, choice, () -> helptext(dispatch, choice))()
 end
@@ -54,7 +54,7 @@ Running CPD on three main components of biomaterials:
 This example uses the *modified* (and experimental) metaplast model to ensure 
 mass conservation.  This is the same model that is used in the spatial examples.
 """
-function cpd_biochar_consituents()
+function cpd_biochar_constituents()
 
     # Define reaction rate parameters for the three biomaterials
     AEσb_lignin = ReactionRateParams(7.0e16, 55400.0, 500.0)
@@ -114,6 +114,9 @@ function cpd_biochar_consituents()
     
 end
 
+"""
+Same as `cpd_biochar_constituents`, but with modified parameters.
+"""
 function cpd_biochar_consituents_modif()
 
 

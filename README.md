@@ -46,3 +46,10 @@ f_gas
 f_tar
 binned_molecular_weights
 ```
+
+## Examples
+The examples in the `examples` folder can be run by first activating the `CPDSpatial` environment.  Then, from the project's root folder, a specific example could be included, for example:
+```@docs
+include("examples/basic_cpd_benchmarking.jl")
+```
+The `basic_cpd_benchmarking` script will setup a function `cpd_benchmarking` that can be called with a specific symbol to test a specific case.  The options are listed in the function doucmentation, and also displayed when calling the function without any parameters.

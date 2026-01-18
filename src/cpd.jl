@@ -185,7 +185,9 @@ function cpd(AEσb::ReactionRateParams,     # bridge breaking reaction: £ →£
                                                 num_bins=num_tar_bins,
                                                 consistent_with_original_code=consistent_with_original_code)
     elseif metaplast_model == :modified
-        return metaplast_percolation_model_modif(Tfun, Pfun, mpar.ma, input...,num_bins=num_tar_bins)
+        return metaplast_percolation_model_modif(Tfun, Pfun, mpar.ma, input...,
+                                                 num_bins=num_tar_bins,
+                                                 consistent_with_original_code=consistent_with_original_code)
     end
     error("Inexistant metaplast model specified")
 end
@@ -340,11 +342,12 @@ end
 # This is an experimental, modified version of the metaplast model.  The modification
 # aims to preserve mass conservation.
 function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, £vec, gvec,
-                                          pvec, cvec, time, g1, g2;
-                                          num_bins=20,
-                                          acr=3.0e15, # pre-exponential factor for crosslinking
-                                          ecr=65000.0 # activation energy for crosslinking
-                                          )
+                                           pvec, cvec, time, g1, g2;
+                                           num_bins=20,
+                                           acr=3.0e15, # pre-exponential factor for crosslinking
+                                           ecr=65000.0, # activation energy for crosslinking
+                                           consistent_with_original_code=true
+                                           )
     R = 1.9872036 # universal gas constant in cal/mol/K
     num_tsteps = length(time)
     light_gas_weight = r * ma / 2.0 # light gas molecular weight
@@ -375,8 +378,12 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
         P = Pfun(time[cur_ix])
 
         evacuated_tar = ftar[prev_ix]
-        #remaining_mass = 1.0 - evacuated_tar # @@ This is more in line with original model
-        remaining_mass = 1.0 - evacuated_tar - fgas[prev_ix]; # @@ This is more in line with current spatial model
+        if consistent_with_original_code
+            remaining_mass = 1.0 - evacuated_tar # @@ This is more in line with original model
+        else
+            remaining_mass = 1.0 - evacuated_tar - fgas[prev_ix]; # @@ This is more in line with current spatial model
+        end
+        
         if remaining_mass < 0.0
             remaining_mass = 0.0
             @warn "Remaining mass negative."
@@ -387,7 +394,8 @@ function metaplast_percolation_model_modif(Tfun, Pfun, ma, r, σ, c₀, δvec, �
         f_gas_ref = max(f_gas_ref, f_gas_ref_last) # current reference fgas cannot be less than previous,
                                                    # though it may happen from integration error in gvec
         
-        f_tar_ref = f_tar(r, pvec[cur_ix], σ, c₀, δvec[cur_ix], £vec[cur_ix], bins=num_bins)
+        f_tar_ref = f_tar(r, pvec[cur_ix], σ, c₀, δvec[cur_ix], £vec[cur_ix], bins=num_bins,
+                          consistent_with_original_code=consistent_with_original_code)
         
         # Compute light gas mass fraction, adjusted for evacuated metaplast
         # (which does not contribute to light gas generation).

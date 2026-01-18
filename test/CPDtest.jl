@@ -31,7 +31,8 @@ function reproduce_fortran_test()
     # Run the CPD algorithm
     
     res = cpd(AEσb, AEσg, AEσρ, mpar, duration, t -> Tfun(t),
-              num_tar_bins = 20, 
+              num_tar_bins = 20,
+              consistent_with_original_code = false,
               metaplast_model=:original);
 
     verify_result(res, [0.32105, 0.16575, 0.28249, 0.55175]);
@@ -75,18 +76,19 @@ function cpd_biochar_test()
 
     # Running CPD on the three models
     res_lignin = cpd(AEσb_lignin, AEσg_lignin, AEσρ_lignin, mpar_lignin,
-                     total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+                     total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified,
+                     consistent_with_original_code = false)
     res_cellulose = cpd(AEσb_cellulose, AEσg_cellulose, AEσρ_cellulose, mpar_cellulose,
-                        total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified)
+                        total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified,
+                        consistent_with_original_code = false)
     res_xylan = cpd(AEσb_xylan, AEσg_xylan, AEσρ_xylan, mpar_xylan,
-                    total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified);
+                    total_duration, Tfun, max_tstep = 1e-2, metaplast_model=:modified,
+                    consistent_with_original_code = false)
 
-    verify_result(res_lignin, [0.26296, 0.34996, 0.260598, 0.3894])
-    verify_result(res_cellulose, [0.0099, 0.2129, 0.7105, 0.07656])
-    verify_result(res_xylan, [0.0099, 0.3258, 0.61909676, 0.05508])
+    verify_result(res_lignin, [0.26296, 0.29029, 0.243073, 0.46663])
+    verify_result(res_cellulose, [0.0099, 0.175608, 0.6645, 0.1599])
+    verify_result(res_xylan, [0.0099, 0.2673, 0.55061, 0.1821])
 end
-
-
 
 
 function interpolated_temperature_function(filename)

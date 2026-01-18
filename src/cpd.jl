@@ -87,7 +87,11 @@ This function performs a cpd simulation. It takes in the following parameters:
     - `:modified` - use a modified model that aims for mass conservation (experimental)
 - `num_tar_bins::Integer` - Number of tar bins (if a metaplast model is used)
 - `max_tstep::Float64` - maximum timestep to use in the ODE integration (default: `Inf`)
-
+- `consistent_with_original_code::Bool` - if true, use formulations that reproduce
+                                      the original FORTRAN code as closely as possible,
+                                      including some known inconsistencies.  If false,
+                                      use formulations that are more consistent
+                                      from a mass conservation perspective.
 # Returns
 - A tuple with result values.  The following items (vectors) are always returned:
     - `time`: timepoints
@@ -268,7 +272,8 @@ function metaplast_percolation_model_orig(Tfun, Pfun, ma, r, σ, c₀, δvec, £
       
                                                 
         # compute binned tar mass fraction with no adjustments 
-        bins = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins, consistent_with_original_code=consistent_with_original_code)
+        bins = f_tar(r, pvec[i], σ, c₀, δvec[i], £vec[i], bins=num_bins,
+                     consistent_with_original_code=consistent_with_original_code)
 
         # compute corresponding molecular weights.  Divide by 1000 to get unit in kg/mol
         molweights = binned_molecular_weights(ma, r, pvec[i], σ, δvec[i], £vec[i], num_bins)

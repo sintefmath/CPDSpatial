@@ -36,7 +36,8 @@ function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
                      ma::Real, mb::Real, σ::Real, bulk_density, P0::Real, T0::Real;
                      α = 8.82115e9,
                      β = 299 * 10^(3*0.5903), # original β = 299 was for g/mol, not kg/mol
-                     γ = 0.5903)
+                     γ = 0.5903,
+                     consistent_with_original_code = true)
 
     @assert(0.0 <= c0 <= p0 <= 1.0)
     £ = p0 - c0
@@ -44,7 +45,9 @@ function setup_state(model::JutulCPDModel, p0::Real, c0::Real,
     c = c0
 
     r = mb / ma
-    ftar = f_tar(r, p0, σ, c0, δ, £, bins = model.system.num_tar_bins)
+    ftar = f_tar(r, p0, σ, c0, δ, £,
+                 bins = model.system.num_tar_bins,
+                 consistent_with_original_code = consistent_with_original_code)
 
     cell_masses = model.data_domain[:volumes] .* bulk_density
 

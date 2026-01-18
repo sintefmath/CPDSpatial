@@ -3,7 +3,14 @@ using CPDSpatial
 using Interpolations
 using DelimitedFiles
 using DataStructures
-import GLMakie
+
+isCI = get(ENV, "CI", false) == "true"
+
+if isCI
+    using CairoMakie
+else
+    using GLMakie
+end
 
 export cpd_benchmarking
 
@@ -222,13 +229,13 @@ function cpd_heating_rate()
     duration = (end_temp - start_temp) / rate;
     Tfun = t -> start_temp + rate * t;
 
-    f = GLMakie.Figure()
-    ax1 = GLMakie.Axis(f[1,1],
+    f = Figure()
+    ax1 = Axis(f[1,1],
                        xlabel="Temperature (K)",
                        ylabel="Mass Fraction Tar",
                        title="Tar Yield vs. Temperature",
                        width=500, height=500)
-    ax2 = GLMakie.Axis(f[1,2],
+    ax2 = Axis(f[1,2],
                        xlabel="Temperature (K)",
                        ylabel="Mass Fraction Volatiles",
                        title="Volatiles vs. Temperature",
@@ -236,19 +243,20 @@ function cpd_heating_rate()
 
     for i = 1:5
         res = cpd(AEσb, AEσg, AEσρ, mpar, duration, Tfun, metaplast_model=:none)
-        GLMakie.lines!(ax1, Tfun.(res.time), res.ftar, label="rate = $rate K/s")
-        GLMakie.lines!(ax2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s")
+        lines!(ax1, Tfun.(res.time), res.ftar, label="rate = $rate K/s")
+        lines!(ax2, Tfun.(res.time), res.ftar .+ res.fgas, label="rate = $rate K/s")
         rate *= 10.0;
         duration = (end_temp - start_temp) / rate;
         Tfun = t -> start_temp + rate * t;
     end
     
-    GLMakie.axislegend(ax1, position=:rb)
-    GLMakie.axislegend(ax2, position=:rb)
-    GLMakie.activate!(title="Impact of heating rate")
-    GLMakie.resize_to_layout!(f)
-    display(GLMakie.Screen(), f)
-    
+    axislegend(ax1, position=:rb)
+    axislegend(ax2, position=:rb)
+    if !isCI
+        GLMakie.activate!(title="Impact of heating rate")
+        GLMakie.resize_to_layout!(f)
+        GLMakie.display(GLMakie.Screen(), f)
+    end
 
     # Print out information about parameters used to call cpd
     print_arguments(AEσb, AEσg, AEσρ, mpar)
@@ -479,39 +487,40 @@ end
 # ----------------------------------------------------------------------------
 function plot_result(res; toptitle="")
 
-    f = GLMakie.Figure()
+    f = Figure()
 
     # Create the first subplot with (£vec, δvec, cvec)
-    ax1 = GLMakie.Axis(f[1,1],
+    ax1 = Axis(f[1,1],
                        title="Labile Bridges, Side Chains, Char Bridges, gas release",
                        xlabel="Time",
                        ylabel="Fraction",
                        width=500, height=150)
-    GLMakie.lines!(ax1, res.time, res.£vec, label="£vec", color = :blue)
-    GLMakie.lines!(ax1, res.time, res.δvec/2, label="δvec/2", color = :red)
-    GLMakie.lines!(ax1, res.time, res.cvec, label="cvec", color = :green)
-    GLMakie.lines!(ax1, res.time, res.g1/2, label="g1/2", color = :coral1)
-    GLMakie.lines!(ax1, res.time, res.g2/2, label="g2/2", color = :salmon4)
-    GLMakie.axislegend(position=:lc)
+    lines!(ax1, res.time, res.£vec, label="£vec", color = :blue)
+    lines!(ax1, res.time, res.δvec/2, label="δvec/2", color = :red)
+    lines!(ax1, res.time, res.cvec, label="cvec", color = :green)
+    lines!(ax1, res.time, res.g1/2, label="g1/2", color = :coral1)
+    lines!(ax1, res.time, res.g2/2, label="g2/2", color = :salmon4)
+    axislegend(position=:lc)
 
     # Create the second subplot with (fgas, ftar, fchar)
-    ax2 = GLMakie.Axis(f[2,1],
+    ax2 = Axis(f[2,1],
                        title="Gas Formation, Tar and Char",
                        xlabel="Time",
                        ylabel="Mass Fraction",
                        width=500, height=150)
-    GLMakie.lines!(ax2, res.time, res.fgas, label="fgas")
-    GLMakie.lines!(ax2, res.time, res.ftar, label="ftar")
-    GLMakie.lines!(ax2, res.time, res.fchar, label="fchar")
+    lines!(ax2, res.time, res.fgas, label="fgas")
+    lines!(ax2, res.time, res.ftar, label="ftar")
+    lines!(ax2, res.time, res.fchar, label="fchar")
     if in(:fmetaplast, keys(res))
-        GLMakie.lines!(res.time, res.fmetaplast, label="fmetaplast")
+        lines!(res.time, res.fmetaplast, label="fmetaplast")
     end
 
-    GLMakie.axislegend(position=:lc)
-
-    GLMakie.activate!(title=toptitle)
-    GLMakie.resize_to_layout!(f)
-    display(GLMakie.Screen(), f)
+    axislegend(position=:lc)
+    if !isCI
+        GLMakie.activate!(title=toptitle)
+        GLMakie.resize_to_layout!(f)
+        GLMakie.display(GLMakie.Screen(), f)
+    end
 end
 
 # ----------------------------------------------------------------------------

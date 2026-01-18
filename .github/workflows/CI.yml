@@ -27,6 +27,8 @@ jobs:
           - windows-latest
         arch:
           - x64
+    env:
+      CI: true # might not be needed
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1

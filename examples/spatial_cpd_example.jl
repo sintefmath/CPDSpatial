@@ -3,7 +3,14 @@
 using Jutul
 using JutulDarcy
 using CPDSpatial
-using GLMakie
+
+isCI = get(ENV, "CI", false) == "true"
+
+if isCI
+    using CairoMakie
+else
+    using GLMakie
+end
 
 # # Embedding CPD in a spatial model
 #
@@ -149,20 +156,22 @@ tarfrac = cumsum(tar)./ init_mass;
 mplastfrac = mplast ./ init_mass;
 charfrac = 1 .- lgasfrac .- tarfrac;
 
-f = GLMakie.Figure()
-ax = GLMakie.Axis(f[1,1],
+f = Figure()
+ax = Axis(f[1,1],
                   title="",
                   xlabel="Time",
                   ylabel="Fraction")
-GLMakie.lines!(ax, cumtime[1:N], lgasfrac, label="light gas")
-GLMakie.lines!(ax, cumtime[1:N], tarfrac, label="volatile tar")
-GLMakie.lines!(ax, cumtime[1:N], mplastfrac, label="metaplast")
-GLMakie.lines!(ax, cumtime[1:N], charfrac, label="char")
-GLMakie.lines!(ax, cumtime[1:N],
+lines!(ax, cumtime[1:N], lgasfrac, label="light gas")
+lines!(ax, cumtime[1:N], tarfrac, label="volatile tar")
+lines!(ax, cumtime[1:N], mplastfrac, label="metaplast")
+lines!(ax, cumtime[1:N], charfrac, label="char")
+lines!(ax, cumtime[1:N],
                cumsum([sum(x) for x in reattached[1:N]] ./ init_mass),
                label="reattached metaplast")
-GLMakie.axislegend()
-display(GLMakie.Screen(), f)
+axislegend()
+if !isCI
+    GLMakie.display(GLMakie.Screen(), f)
+end
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
 pmat = hcat([x[:Pressure] for x in states]...);
@@ -174,30 +183,35 @@ attached = hcat(reattached...) ./ G[:volumes];
 
 
 # Plot a surface expressing the evolution of pressure in space and time.  
-fig, ax1 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+fig, ax1 = surface(G[:cell_centroids][1,:], cumtime[1:N],
                            reverse(pmat, dims=1)./P0, axis=(type=Axis3,))
 ax1.title="Pressure evolution"
 ax1.xlabel="Distance from (spherical) particle center"
 ax1.ylabel="Time (ms)"
 ax1.zlabel="Pressure (atm)"
-display(GLMakie.Screen(), fig)
+if !isCI
+    GLMakie.display(GLMakie.Screen(), fig)
+end
 
 # Likewise, we can plot a surface expressing temperature in space and time.
-fig2, ax2 = GLMakie.surface(G[:cell_centroids][1,:], cumtime[1:N],
+fig2, ax2 = surface(G[:cell_centroids][1,:], cumtime[1:N],
                            reverse(tmat, dims=1), axis=(type=Axis3,))
 ax2.title="Temperature evolution"
 ax2.xlabel="Distance from (spherical) particle center"
 ax2.ylabel="Time (ms)"
 ax2.zlabel="Temperature (K)"
-display(GLMakie.Screen(), fig2)
+if !isCI
+    GLMakie.display(GLMakie.Screen(), fig2)
+end
 
 
 # averaging light gas density over the three materials
-fig3, ax3 = GLMakie.surface(G[:cell_centroids][1, :], cumtime[1:N],
+fig3, ax3 = surface(G[:cell_centroids][1, :], cumtime[1:N],
                             reverse(lgdens, dims=1), axis=(type=Axis3,))
 ax3.title="Light gas density"
 ax3.xlabel="Distance from (spherical) particle center"
 ax3.ylabel="Time (ms)"
 ax3.zlabel="Density kg/m^3"
-display(GLMakie.Screen(), fig3)
-
+if !isCI
+    GLMakie.display(GLMakie.Screen(), fig3)
+end

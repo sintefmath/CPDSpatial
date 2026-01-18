@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Odd Andersen <odd.andersen@sintef.no>"]
 
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
@@ -25,9 +26,6 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 
 [compat]
-#GLMakie = "=0.13.8"
-#Jutul = "=0.2.31"
-#JutulDarcy = "=0.2.23"
+CairoMakie = "0.13.10"
 
 [dependencies]
-#JutulDarcy = "0.2.23"

@@ -4,12 +4,14 @@ using Interpolations
 using DelimitedFiles
 using DataStructures
 
-isCI = get(ENV, "CI", false) == "true"
+isCI = get(ENV, "CI", false)
 
 if isCI
     using CairoMakie
+    Mk = CairoMakie
 else
     using GLMakie
+    Mk = GLMakie
 end
 
 export cpd_benchmarking
@@ -256,9 +258,9 @@ function cpd_heating_rate()
     axislegend(ax1, position=:rb)
     axislegend(ax2, position=:rb)
     if !isCI
-        GLMakie.activate!(title="Impact of heating rate")
-        GLMakie.resize_to_layout!(f)
-        GLMakie.display(GLMakie.Screen(), f)
+        Mk.activate!(title="Impact of heating rate")
+        Mk.resize_to_layout!(f)
+        Mk.display(Mk.Screen(), f)
     end
 
     # Print out information about parameters used to call cpd
@@ -520,9 +522,9 @@ function plot_result(res; toptitle="")
 
     axislegend(position=:lc)
     if !isCI
-        GLMakie.activate!(title=toptitle)
-        GLMakie.resize_to_layout!(f)
-        GLMakie.display(GLMakie.Screen(), f)
+        Mk.activate!(title=toptitle)
+        Mk.resize_to_layout!(f)
+        Mk.display(Mk.Screen(), f)
     end
 end
 

@@ -4,12 +4,14 @@ using Jutul
 using JutulDarcy
 using CPDSpatial
 
-isCI = get(ENV, "CI", false) == "true"
+isCI = get(ENV, "CI", false)
 
 if isCI
     using CairoMakie
+    Mk = CairoMakie
 else
     using GLMakie
+    Mk = GLMakie
 end
 
 # # Embedding CPD in a spatial model
@@ -170,7 +172,7 @@ lines!(ax, cumtime[1:N],
                label="reattached metaplast")
 axislegend()
 if !isCI
-    GLMakie.display(GLMakie.Screen(), f)
+    Mk.display(Mk.Screen(), f)
 end
 
 # We can create 2D arrays representing selected variables in space and time, e.g.
@@ -190,7 +192,7 @@ ax1.xlabel="Distance from (spherical) particle center"
 ax1.ylabel="Time (ms)"
 ax1.zlabel="Pressure (atm)"
 if !isCI
-    GLMakie.display(GLMakie.Screen(), fig)
+    Mk.display(Mk.Screen(), fig)
 end
 
 # Likewise, we can plot a surface expressing temperature in space and time.
@@ -201,7 +203,7 @@ ax2.xlabel="Distance from (spherical) particle center"
 ax2.ylabel="Time (ms)"
 ax2.zlabel="Temperature (K)"
 if !isCI
-    GLMakie.display(GLMakie.Screen(), fig2)
+    Mk.display(Mk.Screen(), fig2)
 end
 
 
@@ -213,5 +215,5 @@ ax3.xlabel="Distance from (spherical) particle center"
 ax3.ylabel="Time (ms)"
 ax3.zlabel="Density kg/m^3"
 if !isCI
-    GLMakie.display(GLMakie.Screen(), fig3)
+    Mk.display(Mk.Screen(), fig3)
 end

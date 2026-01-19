@@ -6,13 +6,13 @@ using CPDSpatial
 
 isCI = get(ENV, "CI", false) 
 
-if isCI
+#if isCI
     using CairoMakie
     Mk = CairoMakie
-else
-    using GLMakie
-    Mk = GLMakie
-end
+# else
+#     using GLMakie
+#     Mk = GLMakie
+# end
 
 # ============================================================================
 # This script is a modification of the `spatial_cpd_example.jl` script where

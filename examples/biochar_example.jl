@@ -4,9 +4,9 @@ using Jutul
 using JutulDarcy
 using CPDSpatial
 
-isCI = get(ENV, "CI", false) 
+isCI = get(ENV, "CI", "false") 
 
-if isCI
+if isCI == "true"
     using CairoMakie
     Mk = CairoMakie
 else
@@ -194,7 +194,7 @@ lines!(ax, cumtime[1:N],
                label="reattached metaplast")
 axislegend()
 
-if !isCI
+if !(isCI == "true")
     Mk.display(Mk.Screen(), f)
 end
 
@@ -213,7 +213,7 @@ ax1.title="Pressure evolution"
 ax1.xlabel="Distance from (spherical) particle center"
 ax1.ylabel="Time (ms)"
 ax1.zlabel="Pressure (atm)"
-if !isCI
+if !(isCI == "true")
     Mk.display(Mk.Screen(), fig)
 end
 
@@ -225,7 +225,7 @@ ax2.title="Temperature evolution"
 ax2.xlabel="Distance from (spherical) particle center"
 ax2.ylabel="Time (ms)"
 ax2.zlabel="Temperature (K)"
-if !isCI
+if !(isCI == "true")
     Mk.display(Mk.Screen(), fig2)
 end
 
@@ -237,6 +237,6 @@ ax3.title="Light gas density"
 ax3.xlabel="Distance from (spherical) particle center"
 ax3.ylabel="Time (ms)"
 ax3.zlabel="Density kg/m^3"
-if !isCI
+if !(isCI == "true")
     Mk.display(Mk.Screen(), fig3)
 end

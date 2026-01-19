@@ -4,9 +4,9 @@ using Interpolations
 using DelimitedFiles
 using DataStructures
 
-isCI = get(ENV, "CI", false)
+isCI = get(ENV, "CI", "false")
 
-if isCI
+if isCI == "true"
     using CairoMakie
     Mk = CairoMakie
 else
@@ -257,7 +257,7 @@ function cpd_heating_rate()
     
     axislegend(ax1, position=:rb)
     axislegend(ax2, position=:rb)
-    if !isCI
+    if !(isCI == "true")
         Mk.activate!(title="Impact of heating rate")
         Mk.resize_to_layout!(f)
         Mk.display(Mk.Screen(), f)
@@ -521,7 +521,7 @@ function plot_result(res; toptitle="")
     end
 
     axislegend(position=:lc)
-    if !isCI
+    if !(isCI == "true")
         Mk.activate!(title=toptitle)
         Mk.resize_to_layout!(f)
         Mk.display(Mk.Screen(), f)

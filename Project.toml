@@ -10,7 +10,9 @@ DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Jutul = "2b460a1a-8a2b-45b2-b125-b5c536396eb9"
 JutulDarcy = "82210473-ab04-4dce-b31b-11573c4f8e0a"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
@@ -23,11 +25,14 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 
 [compat]
 CairoMakie = "0.13.10"
-
-[extras]
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+GLMakie = "0.11.11"
+JLD2 = "0.6.3"
 
 [dependencies]
+
+[extras]
+

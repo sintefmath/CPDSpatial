@@ -10,7 +10,6 @@ DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Jutul = "2b460a1a-8a2b-45b2-b125-b5c536396eb9"
 JutulDarcy = "82210473-ab04-4dce-b31b-11573c4f8e0a"
@@ -27,5 +26,8 @@ TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 
 [compat]
 CairoMakie = "0.13.10"
+
+[extras]
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 
 [dependencies]

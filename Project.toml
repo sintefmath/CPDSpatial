@@ -27,5 +27,6 @@ TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 
 [compat]
 CairoMakie = "0.13.10"
+SpecialFunctions = "2"
 
 [dependencies]

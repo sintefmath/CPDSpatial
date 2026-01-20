@@ -5,10 +5,8 @@ on:
       - main
     tags: ['*']
   pull_request:
-  workflow_dispatch:
+  workflow_dispatch: 
 concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
@@ -18,22 +16,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
+        version: 
           - '1'
         os:
           - ubuntu-latest
           - macOS-latest
           - windows-latest
-        arch:
+        arch: 
           - x64
     env:
-      CI: true # might not be needed
+      CI: true
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
-        with:
+        with: 
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
+      
+      # Setup headless display for Linux
+      - name: Setup Xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-glx
+          export DISPLAY=: 99
+          Xvfb :99 -screen 0 1024x768x24 &
+          sleep 3
+      
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      
+      - name: Run tests
+        uses: julia-actions/julia-runtest@v1
+        env: 
+          DISPLAY: ${{ runner.os == 'Linux' && ':99' || '' }}

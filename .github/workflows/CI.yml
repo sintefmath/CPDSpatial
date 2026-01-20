@@ -39,7 +39,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libgl1-mesa-glx
+          sudo apt-get install -y xvfb libgl1
           export DISPLAY=: 99
           Xvfb :99 -screen 0 1024x768x24 &
           sleep 3

@@ -28,10 +28,9 @@ TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 
 [compat]
 CairoMakie = "0.13.10"
-GLMakie = "0.11.11"
+GLMakie = "0.11.11, 0.13"
 JLD2 = "0.6.3"
 
 [dependencies]
 
 [extras]
-

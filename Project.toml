@@ -30,8 +30,8 @@ TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 CairoMakie = "0.13.10"
 GLMakie = "0.11.11"
 JLD2 = "0.6.3"
+SpecialFunctions = "2"
 
 [dependencies]
 
 [extras]
-

@@ -28,6 +28,8 @@ TextWrap = "b718987f-49a8-5099-9789-dcd902bef87d"
 
 [compat]
 DataStructures = "0.19"
+Documenter = "1"
+Literate = "2"
 
 [dependencies]
 
